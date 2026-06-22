@@ -1,0 +1,528 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<meta name="theme-color" content="#2e7d32">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="CacaoBot">
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icon-192.png">
+<title>CacaoBot ULEAM</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+:root{
+  --verde:#2e7d32;--verde-dark:#1b5e20;--verde-light:#e8f5e9;
+  --user-bg:#dcf8c6;--bot-bg:#fff;--gray:#f0f0f0;--text:#222;
+  --border:#ddd;--sub:#888;--shadow:0 1px 3px rgba(0,0,0,.12);
+}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
+  background:#e5ddd5;height:100dvh;display:flex;flex-direction:column;overflow:hidden}
+
+/* HEADER */
+#header{background:var(--verde);color:#fff;padding:12px 16px;
+  display:flex;align-items:center;gap:12px;
+  box-shadow:0 2px 6px rgba(0,0,0,.3);z-index:10;flex-shrink:0}
+#header .avatar{width:42px;height:42px;border-radius:50%;background:var(--verde-dark);
+  display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0}
+#header .info{flex:1;min-width:0}
+#header .info h1{font-size:16px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#header .info p{font-size:12px;opacity:.85}
+#header .actions{display:flex;gap:4px}
+#header .actions button{background:none;border:none;color:#fff;padding:8px;
+  border-radius:50%;cursor:pointer;font-size:18px;line-height:1;opacity:.9}
+#header .actions button:active{background:rgba(255,255,255,.15)}
+
+/* MENU */
+#menu-overlay{display:none;position:fixed;inset:0;z-index:20}
+#menu-overlay.open{display:block}
+#menu-overlay .backdrop{position:absolute;inset:0}
+#menu{position:absolute;top:60px;right:8px;background:#fff;border-radius:8px;
+  box-shadow:0 4px 20px rgba(0,0,0,.2);min-width:200px;overflow:hidden;z-index:21}
+#menu button{display:flex;align-items:center;gap:12px;width:100%;
+  padding:14px 18px;background:none;border:none;text-align:left;
+  font-size:15px;cursor:pointer;color:var(--text)}
+#menu button:active{background:var(--gray)}
+#menu button .ico{font-size:18px;width:24px;text-align:center}
+
+/* CHAT */
+#chat{flex:1;overflow-y:auto;padding:10px 8px;
+  display:flex;flex-direction:column;gap:4px;
+  -webkit-overflow-scrolling:touch}
+
+/* MENSAJES */
+.msg-wrap{display:flex;flex-direction:column;max-width:82%;animation:fadeIn .2s ease}
+@keyframes fadeIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+.msg-wrap.user{align-self:flex-end;align-items:flex-end}
+.msg-wrap.bot{align-self:flex-start;align-items:flex-start}
+.bubble{padding:9px 12px;border-radius:12px;font-size:14.5px;line-height:1.5;
+  word-break:break-word;white-space:pre-wrap;box-shadow:var(--shadow)}
+.msg-wrap.user .bubble{background:var(--user-bg);border-bottom-right-radius:3px;color:var(--text)}
+.msg-wrap.bot .bubble{background:var(--bot-bg);border-bottom-left-radius:3px;color:var(--text)}
+.bubble.error{background:#fdecea;color:#c62828}
+.msg-time{font-size:11px;color:var(--sub);margin-top:2px;padding:0 4px}
+
+/* FUENTE del fragmento */
+.bubble .fuente{display:inline-block;margin-top:8px;font-size:11.5px;
+  color:var(--verde);background:var(--verde-light);
+  padding:3px 8px;border-radius:20px;font-weight:600}
+
+/* TYPING */
+.typing{display:flex;gap:4px;align-items:center;padding:10px 14px;
+  background:#fff;border-radius:12px;border-bottom-left-radius:3px;
+  box-shadow:var(--shadow);width:60px}
+.typing span{width:8px;height:8px;background:#bbb;border-radius:50%;
+  animation:blink 1.2s infinite}
+.typing span:nth-child(2){animation-delay:.2s}
+.typing span:nth-child(3){animation-delay:.4s}
+@keyframes blink{0%,80%,100%{opacity:.3}40%{opacity:1}}
+
+/* INPUT */
+#inputbar{background:#f0f0f0;padding:8px 10px;
+  display:flex;align-items:flex-end;gap:8px;flex-shrink:0;
+  border-top:1px solid var(--border)}
+#txt{flex:1;background:#fff;border:none;border-radius:22px;
+  padding:10px 16px;font-size:15px;max-height:120px;
+  resize:none;outline:none;line-height:1.4;font-family:inherit;
+  box-shadow:var(--shadow)}
+#btn-send{width:46px;height:46px;border-radius:50%;border:none;flex-shrink:0;
+  background:var(--verde);color:#fff;font-size:20px;cursor:pointer;
+  display:flex;align-items:center;justify-content:center;
+  box-shadow:0 2px 6px rgba(0,0,0,.2);transition:background .15s}
+#btn-send:active{background:var(--verde-dark)}
+#btn-send:disabled{background:#ccc;box-shadow:none}
+
+/* MODAL */
+#modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);
+  z-index:30;align-items:center;justify-content:center}
+#modal-overlay.open{display:flex}
+#modal{background:#fff;border-radius:16px;padding:24px;width:88%;max-width:340px;
+  box-shadow:0 8px 32px rgba(0,0,0,.2)}
+#modal h2{font-size:17px;margin-bottom:8px;color:var(--text)}
+#modal p{font-size:14px;color:var(--sub);margin-bottom:20px;line-height:1.5}
+#modal .btns{display:flex;gap:10px;justify-content:flex-end}
+#modal .btns button{padding:10px 20px;border:none;border-radius:8px;
+  font-size:14px;cursor:pointer;font-weight:600}
+#modal .btns .cancel{background:var(--gray);color:var(--text)}
+#modal .btns .confirm{background:var(--verde);color:#fff}
+
+/* TOAST */
+#toast{position:fixed;bottom:80px;left:50%;transform:translateX(-50%) translateY(20px);
+  background:#333;color:#fff;padding:10px 20px;border-radius:24px;
+  font-size:13px;opacity:0;transition:all .3s;z-index:40;white-space:nowrap;pointer-events:none}
+#toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+
+/* BIENVENIDA */
+#welcome{text-align:center;padding:24px 16px;color:var(--sub)}
+#welcome .ico{font-size:52px;margin-bottom:12px}
+#welcome h2{font-size:17px;color:#555;margin-bottom:8px}
+#welcome .chips{display:flex;flex-wrap:wrap;gap:8px;justify-content:center;margin-top:16px}
+#welcome .chip{background:#fff;border:1.5px solid var(--verde);color:var(--verde);
+  border-radius:20px;padding:7px 14px;font-size:13px;cursor:pointer}
+#welcome .chip:active{background:var(--verde-light)}
+</style>
+</head>
+<body>
+
+<div id="header">
+  <div class="avatar">🌱</div>
+  <div class="info">
+    <h1>CacaoBot ULEAM</h1>
+    <p>Asistente fitosanitario · Offline</p>
+  </div>
+  <div class="actions">
+    <button onclick="toggleMenu()" title="Opciones">⋮</button>
+  </div>
+</div>
+
+<div id="menu-overlay">
+  <div class="backdrop" onclick="toggleMenu()"></div>
+  <div id="menu">
+    <button onclick="exportarCSV();toggleMenu()"><span class="ico">📊</span>Exportar matriz (CSV)</button>
+    <button onclick="pedirLimpiar();toggleMenu()"><span class="ico">🗑️</span>Limpiar conversación</button>
+    <button onclick="mostrarAcercaDe();toggleMenu()"><span class="ico">ℹ️</span>Acerca de</button>
+  </div>
+</div>
+
+<div id="chat"></div>
+
+<div id="inputbar">
+  <textarea id="txt" rows="1" placeholder="Escribe tu pregunta sobre cacao..." maxlength="500"></textarea>
+  <button id="btn-send" onclick="enviar()" disabled>➤</button>
+</div>
+
+<div id="modal-overlay">
+  <div id="modal">
+    <h2 id="modal-title">Confirmar</h2>
+    <p id="modal-msg"></p>
+    <div class="btns">
+      <button class="cancel" onclick="cerrarModal()">Cancelar</button>
+      <button class="confirm" id="modal-ok" onclick="">Aceptar</button>
+    </div>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script>
+// ─────────────────────────────────────────────
+//  BASE DE CONOCIMIENTO (100 fragmentos TF-IDF)
+// ─────────────────────────────────────────────
+const CHUNKS = [{"title": "1.1 MONILIASIS (Moniliophthora roreri)", "text": "1.1 MONILIASIS (Moniliophthora roreri)\n- Agente causal: Hongo Moniliophthora roreri\n- Partes afectadas: mazorcas en cualquier etapa de desarrollo\n- Sintomas tempranos: manchas aceitosas de color cafe claro en\n  la superficie de la mazorca, de forma irregular\n- Sintomas avanzados: la mancha crece y se cubre de una masa\n  polvorienta blanca o crema correspondiente a las esporas del hongo\n- El interior de la mazorca se pudre completamente, los granos\n  se vuelven inservibles\n- Condiciones favorables: temperaturas entre 20-30°C, humedad\n  relativa mayor al 80%, lluvias frecuentes\n- Periodo de incubacion: 7 a 14 dias\n- Diseminacion: por viento, agua de lluvia, insectos y herramientas\n- Impacto economico: puede causar perdidas del 30 al 90% de la\n  produccion en zonas humedas como El Carmen\n- Manejo cultural: cosecha oportuna cada 8-15 dias, eliminacion\n  y entierro de mazorcas enfermas, poda de saneamiento\n- Manejo quimico: fungicidas cupricos (hidroxido de cobre,\n  oxicloruro de cobre) aplicados cada 15 dias en epoca lluviosa\n- Manejo biologico: aplicacion de Trichoderma spp. como antagonista\n- Diagnostico rapido en campo: presionar la mazorca; si hay resistencia\n  interna desigual junto con mancha exterior, es Moniliasis\n- Diferencia con Phytophthora: Moniliasis tiene masa polvorienta blanca,\n  Phytophthora tiene mancha negra brillante sin polvo\n- Ciclo epidemiologico detallado: el hongo penetra la mazorca joven de\n  forma asintomatica durante varias semanas antes de mostrar sintomas\n  visibles, lo que dificulta el diagnostico temprano a simple vista\n- Produccion de esporas: una sola mazorca enferma en fase avanzada puede\n  producir una cantidad muy alta de esporas, que se liberan al ambiente\n  cada vez que la mazorca es manipulada o golpeada por la lluvia\n- Distancia de dispersion: el viento y las gotas de lluvia que rebotan\n  pueden transportar esporas a corta y media distancia dentro del lote,\n  por lo que un solo foco sin controlar puede contaminar plantas vecinas\n  en pocas semanas\n- Persistencia del inoculo: las esporas pueden sobrevivir adheridas a\n  herramientas, ropa y manos del trabajador, lo que convierte la\n  desinfeccion de herramientas en una medida tan importante como la\n  eliminacion de mazorcas enfermas"}, {"title": "1.2 ESCOBA DE BRUJA (Moniliophthora perniciosa)", "text": "1.2 ESCOBA DE BRUJA (Moniliophthora perniciosa)\n- Agente causal: Hongo Moniliophthora perniciosa\n- Partes afectadas: brotes vegetativos, flores, frutos pequenos\n  y tejido meristematico\n- Sintomas en brotes: crecimiento anormal y excesivo de brotes\n  axilares formando estructuras en forma de escoba\n- Sintomas en frutos: mazorcas deformadas tipo \"zanahoria\",\n  endurecidas y sin valor comercial\n- Sintomas en flores: hipertrofia floral con posterior muerte\n- Fase verde: tejidos infectados permanecen verdes y turgentes\n  durante 1-3 meses\n- Fase seca: los tejidos mueren y se secan, formando escobas\n  secas color cafe\n- Fase basidial: en epoca lluviosa aparecen setas rosadas en\n  tejidos secos que producen esporas\n- Condiciones favorables: alta humedad, temperaturas de 24-26°C,\n  exceso de sombra\n- Diseminacion: principalmente por basidiosporas transportadas\n  por el viento\n- Manejo: poda fitosanitaria eliminando escobas verdes y secas,\n  aplicacion de pasta bordelesa en cortes, destruccion del material\n- Frecuencia de poda recomendada: cada 3 meses en zonas endemicas\n- Perdidas economicas: hasta 80% de la produccion en focos severos\n- Ciclo epidemiologico detallado: las basidiosporas requieren tejido\n  meristematico joven y en activo crecimiento para infectar con exito,\n  por lo que los brotes nuevos tras una poda son especialmente vulnerables\n  si esta coincide con epoca de alta esporulacion\n- Importancia de las escobas secas: aunque ya no estan vivas, las escobas\n  secas que permanecen en el arbol son la principal fuente de inoculo\n  en epoca lluviosa, ya que ahi se forman las setas rosadas que liberan\n  basidiosporas; por eso deben retirarse y destruirse, no solo cortarse\n  y dejarse caer al suelo del lote"}, {"title": "1.3 PUDRICION NEGRA (Phytophthora spp.)", "text": "1.3 PUDRICION NEGRA (Phytophthora spp.)\n- Agente causal: Oomiceto Phytophthora palmivora y P. megakarya\n- Partes afectadas: mazorcas, tronco, raices y cojines florales\n- Sintomas en mazorca: mancha negra o cafe oscura con halo\n  acuoso, avanza rapidamente cubriendo toda la mazorca en 7-10 dias\n- Sintomas en tronco: cancro oscuro con exudado gomoso,\n  conocido como \"mal del machete\" cuando afecta la corteza\n- Sintomas en raices: pudricion radicular con marchitez general\n  de la planta\n- Condiciones favorables: lluvias intensas, suelos mal drenados,\n  temperaturas de 20-28°C\n- Diseminacion: zoosporas en agua de lluvia y escurrimiento\n- Manejo cultural: drenaje adecuado, evitar heridas en la planta,\n  regular densidad de siembra\n- Manejo quimico: metalaxil + mancozeb, fosetil aluminio,\n  aplicados preventivamente en epoca lluviosa\n- Nota: Phytophthora no es un hongo verdadero sino un Oomiceto,\n  por eso responde mejor a metalaxil que a fungicidas cupricos"}, {"title": "1.4 MAL DE MACHETE (Ceratocystis cacaofunesta)", "text": "1.4 MAL DE MACHETE (Ceratocystis cacaofunesta)\n- Agente causal: Hongo Ceratocystis cacaofunesta\n- Partes afectadas: tronco y ramas principales\n- Sintomas externos: marchitez subita de ramas o planta completa,\n  hojas se tornan amarillas y caen rapidamente\n- Sintomas internos: coloracion oscura (cafe-violacea) de los\n  vasos conductores al cortar el tronco\n- Vector principal: el escarabajo Xyleborus spp. transmite\n  el hongo al hacer galerias en la madera\n- Condiciones favorables: heridas en la planta, estres hidrico,\n  presencia del vector en la plantacion\n- Manejo: eliminar plantas enfermas completas, desinfectar\n  herramientas con hipoclorito al 10%, controlar el vector\n- Importancia del diagnostico interno: cortar el tronco es la\n  unica manera de confirmar el mal de machete por el color oscuro\n- Prevencion: nunca dejar munones al podar, sellar cortes con pasta"}, {"title": "1.5 ANTRACNOSIS (Colletotrichum gloeosporioides)", "text": "1.5 ANTRACNOSIS (Colletotrichum gloeosporioides)\n- Agente causal: Hongo Colletotrichum gloeosporioides\n- Partes afectadas: hojas, frutos y brotes jovenes\n- Sintomas en hojas: manchas necroticas de color cafe oscuro\n  con bordes irregulares, principalmente en hojas jovenes\n- Sintomas en frutos: lesiones hundidas de color cafe oscuro\n  a negro en la superficie\n- Sintomas en brotes: muerte descendente de brotes terminales\n- Condiciones favorables: alta humedad, temperaturas calidas,\n  plantas debilitadas o con deficiencias nutricionales\n- Manejo: fungicidas a base de cobre, tiofanato metilo o\n  azoxistrobina, mejorar nutricion de la planta\n- Diferencia con Moniliasis: Antracnosis afecta hojas y frutos,\n  Moniliasis solo afecta mazorcas; Antracnosis no tiene masa polvorienta"}, {"title": "1.6 ROSELLINIA O PUDRICION RADICAL (Rosellinia bunodes)", "text": "1.6 ROSELLINIA O PUDRICION RADICAL (Rosellinia bunodes)\n- Agente causal: Hongo Rosellinia bunodes\n- Partes afectadas: raices principales y cuello de la planta\n- Sintomas: marchitez progresiva de toda la planta, hojas\n  amarillas que permanecen adheridas al arbol muerto\n- En raices: micelio blanco a negro debajo de la corteza,\n  olor a humedad y pudricion\n- Condiciones favorables: suelos con exceso de materia organica\n  sin descomponer, mal drenaje, zonas boscosas recien desmontadas\n- Manejo: eliminar plantas enfermas con raices, tratar suelo\n  con Trichoderma, evitar enterrar residuos vegetales frescos\n- Es una enfermedad de suelo, dificil de erradicar una vez establecida"}, {"title": "1.7 MAL ROSADO (Erythricium salmonicolor, antes Corticium salmonicolor)", "text": "1.7 MAL ROSADO (Erythricium salmonicolor, antes Corticium salmonicolor)\n- Agente causal: Hongo basidiomiceto Erythricium salmonicolor\n- Partes afectadas: ramas, frutos en cualquier edad y, en casos\n  severos, el tallo de la planta\n- Sintomas iniciales: micelio blanco fino que avanza sobre la\n  corteza de ramas y frutos formando una especie de telarana\n- Sintomas avanzados: costra o membrana de color rosado salmon\n  sobre la corteza afectada, visible especialmente en epoca humeda\n- Dano: el hongo estrangula internamente el tejido, provocando\n  secamiento y muerte regresiva de la rama por encima del punto\n  de infeccion (\"paloteo\"); en frutos causa manchas circulares\n  claras y ligeramente hundidas\n- Condiciones favorables: alta humedad relativa, sombra excesiva,\n  baja circulacion de aire en el dosel\n- Hospederos adicionales: tambien ataca citricos, caucho y cafe,\n  por lo que plantaciones mixtas con estos cultivos pueden ser\n  fuente de inoculo\n- Manejo: poda de las ramas afectadas y destruccion del material\n  fuera del lote, mejorar aireacion regulando la sombra, aplicar\n  fungicida en focos solo en estado inicial (la poda es la medida\n  mas efectiva una vez avanzada la enfermedad)"}, {"title": "1.8 MANCHA DE ALGA O MANCHA ALGAL (Cephaleuros virescens)", "text": "1.8 MANCHA DE ALGA O MANCHA ALGAL (Cephaleuros virescens)\n- Agente causal: alga parasita Cephaleuros virescens (no es un\n  hongo, sino un alga verde que coloniza el tejido vegetal)\n- Partes afectadas: hojas, principalmente las de mayor edad\n- Sintomas: manchas circulares de color verde grisaceo a naranja\n  oxido, ligeramente elevadas y de superficie aterciopelada en\n  el haz de la hoja\n- Dano: reduce el area fotosintetica util de la hoja; en\n  infestaciones severas puede contribuir a defoliacion\n- Condiciones favorables: alta humedad ambiental sostenida, poca\n  ventilacion, hojas con superficie permanentemente humeda\n- Manejo: mejorar la ventilacion del dosel mediante poda y manejo\n  de sombra, aplicaciones de fungicidas cupricos como medida de\n  manejo preventivo, evitar el riego por aspersion sobre el follaje"}, {"title": "1.9 TELARANA O MAL DE HILACHAS (Marasmius spp.)", "text": "1.9 TELARANA O MAL DE HILACHAS (Marasmius spp.)\n- Agente causal: hongos del genero Marasmius, que tambien colonizan\n  tejido de cacao y otros cultivos perennes tropicales\n- Partes afectadas: hojas, brotes tiernos y ramas pequenas\n- Sintomas: filamentos finos de micelio color blanco a crema que\n  se extienden entre hojas y ramas como una telarana, uniendo\n  follaje seco que queda colgando de las ramas\n- Condiciones favorables: humedad relativa muy alta, sombra densa,\n  poca circulacion de aire, restos vegetales acumulados en el dosel\n- Manejo: poda de aclareo para mejorar ventilacion, eliminacion y\n  destruccion del follaje afectado, regulacion de la sombra al\n  30% recomendado, evitar densidades de siembra excesivas\n\n═══════════════════════════════════════════════════════════\n2. PLAGAS DEL CACAO\n═══════════════════════════════════════════════════════════"}, {"title": "2.1 MONALONION O CHINCHE DEL CACAO (Monalonion dissimulatum)", "text": "2.1 MONALONION O CHINCHE DEL CACAO (Monalonion dissimulatum)\n- Clasificacion: Hemiptera, familia Miridae\n- Partes afectadas: brotes tiernos, flores y frutos jovenes\n- Dano directo: inserta su estilete en tejidos tiernos y succiona\n  savia, causando necrosis y deformacion\n- Sintomas: puntos necroticos negros en frutos, deformacion de\n  mazorcas, muerte de brotes apicales\n- Dano indirecto: las heridas son entrada para hongos patogenos\n- Ciclo de vida: huevo 15-20 dias, ninfa 30-40 dias, adulto\n  30-45 dias\n- Condiciones favorables: alta temperatura, exceso de sombra,\n  plantaciones descuidadas\n- Manejo cultural: poda para reducir sombra, eliminacion de\n  malezas hospederas\n- Manejo quimico: imidacloprid, thiamethoxam, aplicados\n  al inicio de la infestacion\n- Manejo biologico: conservacion de parasitoides naturales\n- Umbral de dano economico: 1 ninfa por brote o mas del 5%\n  de frutos jovenes con dano visible"}, {"title": "2.2 TRIPS (Frankliniella spp. y Selenothrips rubrocinctus)", "text": "2.2 TRIPS (Frankliniella spp. y Selenothrips rubrocinctus)\n- Clasificacion: Thysanoptera\n- Partes afectadas: hojas jovenes, flores y frutos en desarrollo\n- Sintomas en hojas: raspado del tejido superficial causando\n  apariencia plateada o bronceada, deformacion foliar\n- Sintomas en frutos: cicatrices corchosas de color cafe en\n  la superficie, deprecia el valor comercial\n- Sintomas en flores: aborto floral, reduccion de cuajado\n- Ciclo de vida corto: 15-30 dias segun temperatura\n- Condiciones favorables: epoca seca, altas temperaturas,\n  plantaciones con estres hidrico\n- Manejo: riego en epoca seca, spinosad, abamectina,\n  control biologico con Amblyseius spp.\n- Diagnostico: sacudir hojas sobre papel blanco, los trips\n  caen y se ven como pequenos puntos amarillos o negros en movimiento"}, {"title": "2.3 BARRENADOR DEL TRONCO (Xylopsocus capucinus)", "text": "2.3 BARRENADOR DEL TRONCO (Xylopsocus capucinus)\n- Clasificacion: Coleoptera, familia Bostrichidae\n- Partes afectadas: tronco y ramas gruesas\n- Sintomas: orificios circulares de 2-4 mm de diametro en\n  la corteza, aserrin fino en la base del arbol\n- Dano: galerias internas en la madera que debilitan\n  estructuralmente la planta\n- Vector: puede transmitir el hongo Ceratocystis cacaofunesta\n- Condiciones favorables: plantas debilitadas, estres hidrico\n  o nutricional, heridas mal cicatrizadas\n- Manejo: mantener plantas vigorosas con buena nutricion,\n  aplicar insecticidas sistemicos en inyeccion al tronco,\n  sellar heridas con pasta bordelesa"}, {"title": "2.4 COCHINILLAS HARINOSAS (Planococcus citri y Dysmicoccus spp.)", "text": "2.4 COCHINILLAS HARINOSAS (Planococcus citri y Dysmicoccus spp.)\n- Clasificacion: Hemiptera, familia Pseudococcidae\n- Partes afectadas: frutos, brotes, axilas de hojas y raices\n- Sintomas: masa algodonosa blanca en colonias sobre frutos\n  y brotes, excrecion de melaza que favorece fumagina\n- Dano directo: succion de savia que debilita la planta\n- Dano indirecto: transmision de virus del cacao, desarrollo\n  de fumagina que reduce fotosintesis\n- Asociacion: viven en simbiosis con hormigas que las protegen\n- Manejo: control de hormigas, aceite mineral + insecticida,\n  liberacion de Cryptolaemus montrouzieri como depredador"}, {"title": "2.5 AFIDOS O PULGONES (Toxoptera aurantii)", "text": "2.5 AFIDOS O PULGONES (Toxoptera aurantii)\n- Clasificacion: Hemiptera, familia Aphididae\n- Partes afectadas: brotes tiernos y hojas jovenes\n- Sintomas: colonias negras en el enves de hojas y brotes,\n  deformacion foliar, presencia de fumagina\n- Transmision: vector del virus del mosaico del cacao\n- Manejo: imidacloprid, pirimicarb, control biologico\n  con avispas parasitoides y mariquitas"}, {"title": "2.6 ACAROS (Calacarus heveae y Tetranychus spp.)", "text": "2.6 ACAROS (Calacarus heveae y Tetranychus spp.)\n- Clasificacion: Acari, familia Tetranychidae\n- Partes afectadas: hojas maduras, principalmente el enves\n- Sintomas: bronceado o plateado de hojas, presencia de telarana\n  fina en el enves, defoliacion en infestaciones severas\n- Condiciones favorables: epoca seca, polvo en el ambiente,\n  uso excesivo de insecticidas que elimina enemigos naturales\n- Ciclo de vida muy corto: 7-10 dias, se reproducen masivamente\n- Manejo: abamectina, azufre mojable, aceite mineral,\n  conservar depredadores como Phytoseiidae\n- Diagnostico: usar lupa de 10x para ver los acaros en el enves"}, {"title": "2.7 HORMIGAS CORTADORAS (Atta spp. y Acromyrmex spp.)", "text": "2.7 HORMIGAS CORTADORAS (Atta spp. y Acromyrmex spp.)\n- Partes afectadas: hojas y brotes tiernos, defolian plantas jovenes\n- Sintomas: corte limpio semicircular en hojas, senderos\n  de hormigas cargando fragmentos foliares\n- Dano severo: pueden defoliar completamente una planta joven\n  en una sola noche\n- Manejo: cebos granulados con sulfluramida o fipronil\n  colocados en la entrada del hormiguero al anochecer\n- En vivero: es la plaga mas destructiva para plantas jovenes"}, {"title": "2.8 TERMITAS (Nasutitermes spp. y otras especies de termitas tropicales)", "text": "2.8 TERMITAS (Nasutitermes spp. y otras especies de termitas tropicales)\n- Clasificacion: Blattodea, grupo de termitas (antiguo orden Isoptera)\n- Partes afectadas: tronco, ramas y raices, principalmente en\n  plantas debilitadas, con heridas o material muerto\n- Sintomas: galerias de tierra adheridas a la corteza, carton de\n  termitas visible en la base del tronco o en ramas secas, madera\n  hueca al golpear\n- Condiciones favorables: plantas con estres hidrico o nutricional,\n  tocones y restos de poda sin retirar, suelos con materia organica\n  en descomposicion\n- Manejo: eliminar tocones y madera muerta del lote, mantener la\n  planta vigorosa mediante buena nutricion y manejo de agua,\n  tratamiento localizado con insecticida en nidos activos cuando\n  el dano es severo"}, {"title": "2.9 PLAGAS VERTEBRADAS (loros, pericos y ardillas)", "text": "2.9 PLAGAS VERTEBRADAS (loros, pericos y ardillas)\n- Partes afectadas: mazorcas maduras, principalmente en el ultimo\n  tramo antes de cosecha\n- Dano: perforacion y consumo parcial de la mazorca, perdida directa\n  de granos y entrada de hongos por la herida abierta\n- Manejo: cosecha oportuna para reducir el tiempo de exposicion de\n  mazorcas maduras, uso de cintas reflectantes o repelentes visuales\n  en focos de dano, monitoreo de horarios de mayor actividad de\n  estos animales para programar la cosecha\n\n═══════════════════════════════════════════════════════════\n3. DEFICIENCIAS NUTRICIONALES\n═══════════════════════════════════════════════════════════"}, {"title": "3.1 DEFICIENCIA DE NITROGENO (N)", "text": "3.1 DEFICIENCIA DE NITROGENO (N)\n- Sintomas: amarillamiento generalizado de hojas, comenzando\n  por hojas mas viejas, crecimiento reducido, hojas pequenas\n- Efecto en produccion: reduccion del numero de flores y frutos\n- Correccion: urea (46% N), nitrato de amonio, aplicacion\n  foliar con solucion de urea al 1%\n- Dosis referencial al suelo: 100-150 g de urea por planta adulta,\n  dividida en 2-3 aplicaciones al ano"}, {"title": "3.2 DEFICIENCIA DE POTASIO (K)", "text": "3.2 DEFICIENCIA DE POTASIO (K)\n- Sintomas: necrosis marginal de hojas (quemado de bordes),\n  hojas rizadas, caida prematura de frutos\n- Efecto: reduce calidad y tamano de mazorcas\n- Correccion: cloruro de potasio, sulfato de potasio\n- Dosis referencial: 150-200 g de KCl por planta adulta por ano"}, {"title": "3.3 DEFICIENCIA DE MAGNESIO (Mg)", "text": "3.3 DEFICIENCIA DE MAGNESIO (Mg)\n- Sintomas: clorosis intervenal en hojas maduras (las venas\n  permanecen verdes, el tejido entre venas se amarilla)\n- Muy comun en suelos arenosos y acidos de El Carmen\n- Correccion: sulfato de magnesio foliar (2 g/litro) o al suelo\n- Dosis foliar: 3-4 aplicaciones cada 15 dias"}, {"title": "3.4 DEFICIENCIA DE ZINC (Zn)", "text": "3.4 DEFICIENCIA DE ZINC (Zn)\n- Sintomas: hojas pequenas y deformadas, entrenudos cortos,\n  apariencia de \"roseta\", hojas con moteado clorotico\n- Correccion: sulfato de zinc foliar (1-2 g/litro) o al suelo\n- Comun en suelos con pH mayor a 7.0"}, {"title": "3.5 DEFICIENCIA DE BORO (B)", "text": "3.5 DEFICIENCIA DE BORO (B)\n- Sintomas: muerte de yemas terminales, frutos deformados,\n  tejido interno corchoso en frutos, flores abortadas\n- Correccion: borax o acido borico en aplicacion foliar (1 g/litro)\n- No sobredosificar: el boro es toxico a concentraciones altas"}, {"title": "3.6 DEFICIENCIA DE HIERRO (Fe)", "text": "3.6 DEFICIENCIA DE HIERRO (Fe)\n- Sintomas: clorosis intervenal en hojas jovenes (a diferencia\n  del Mg que afecta hojas maduras), hojas casi blancas en casos severos\n- Causas: suelos alcalinos bloquean absorcion, exceso de manganeso\n- Correccion: quelato de hierro foliar, acidificar el suelo con azufre"}, {"title": "3.7 DEFICIENCIA DE CALCIO (Ca)", "text": "3.7 DEFICIENCIA DE CALCIO (Ca)\n- Sintomas: deformacion de hojas jovenes, necrosis en los bordes\n  de hojas nuevas, frutos con pudricion apical interna\n- Correccion: cal dolomitica al suelo, fosfato de calcio\n- Tambien corrige la acidez del suelo (pH optimo cacao: 6.0-7.0)"}, {"title": "3.8 DEFICIENCIA DE MANGANESO (Mn)", "text": "3.8 DEFICIENCIA DE MANGANESO (Mn)\n- Sintomas: clorosis intervenal en hojas jovenes similar al hierro,\n  pero con manchas cafe pequenas dispersas en el tejido\n- Correccion: sulfato de manganeso foliar (1-2 g/litro)"}, {"title": "3.9 TOXICIDAD POR ALUMINIO (suelos acidos)", "text": "3.9 TOXICIDAD POR ALUMINIO (suelos acidos)\n- Sintomas: raices cortas y engrosadas de color cafe,\n  crecimiento muy lento, hojas pequenas de color verde palido\n- Causa: suelos con pH menor a 5.5 liberan aluminio toxico\n- Correccion: encalar con cal agricola, elevar pH a 6.0-6.5"}, {"title": "3.10 DEFICIENCIA DE AZUFRE (S)", "text": "3.10 DEFICIENCIA DE AZUFRE (S)\n- Sintomas: amarillamiento generalizado similar al de nitrogeno,\n  pero a diferencia del N suele iniciar en hojas jovenes y avanzar\n  hacia las mas viejas; el crecimiento se vuelve lento y delgado\n- Causas: suelos muy lavados por lluvias intensas, bajo contenido\n  de materia organica\n- Correccion: sulfato de amonio o sulfato de potasio, que aportan\n  azufre junto con el nutriente principal"}, {"title": "3.11 DEFICIENCIA DE MOLIBDENO (Mo)", "text": "3.11 DEFICIENCIA DE MOLIBDENO (Mo)\n- Es una deficiencia poco comun en cacao y de dificil diagnostico\n  visual en campo\n- Sintomas referenciales: clorosis moteada en hojas maduras y\n  reduccion del desarrollo general, relacionada con menor eficiencia\n  en el uso del nitrogeno por la planta\n- Correccion: molibdato de sodio o de amonio en aplicacion foliar\n  a dosis muy bajas, solo si un analisis de suelo confirma la\n  deficiencia"}, {"title": "3.12 RECOMENDACION GENERAL SOBRE DIAGNOSTICO NUTRICIONAL", "text": "3.12 RECOMENDACION GENERAL SOBRE DIAGNOSTICO NUTRICIONAL\n- Muchos sintomas de deficiencia se confunden entre si o con\n  sintomas de enfermedades; ante la duda, lo mas confiable es\n  un analisis de suelo y un analisis foliar de laboratorio antes\n  de aplicar correctivos\n- Una regla practica de campo: sintomas en hojas viejas suelen\n  asociarse a nutrientes moviles en la planta (N, K, Mg), mientras\n  que sintomas en hojas jovenes y yemas suelen asociarse a\n  nutrientes poco moviles (Ca, B, Fe, Mn)\n\n═══════════════════════════════════════════════════════════\n4. MANEJO INTEGRADO DE PLAGAS Y ENFERMEDADES (MIPE)\n═══════════════════════════════════════════════════════════"}, {"title": "4.1 PRINCIPIOS DEL MIPE", "text": "4.1 PRINCIPIOS DEL MIPE\n- Combina metodos culturales, biologicos, quimicos y geneticos\n- Objetivo: mantener poblaciones de plagas bajo el umbral\n  economico de dano sin eliminarlas completamente\n- Prioriza metodos preventivos sobre curativos\n- Reduce el uso de agroquimicos y sus impactos ambientales\n- Base del MIPE: monitoreo constante y toma de decisiones informada"}, {"title": "4.2 MANEJO CULTURAL", "text": "4.2 MANEJO CULTURAL\n- Poda fitosanitaria: cada 3 meses, eliminar ramas enfermas,\n  cruzadas y en mal estado. Desinfectar herramientas con\n  hipoclorito de sodio al 10% entre planta y planta\n- Regulacion de sombra: mantener 30% de sombra para buena\n  ventilacion y reducir humedad en el dosel\n- Cosecha oportuna: recolectar mazorcas maduras cada 8-15 dias\n  para evitar que sean fuente de inoculo\n- Eliminacion de mazorcas enfermas: retirar y enterrar a 30 cm\n  de profundidad o quemar fuera de la plantacion\n- Manejo de malezas: control oportuno para reducir hospederos\n  de plagas y mejorar circulacion de aire\n- Fertilizacion balanceada: plantas bien nutridas son mas\n  resistentes a plagas y enfermedades\n- Drenaje: construir canales para evacuar el exceso de agua\n  y evitar encharcamientos que favorecen Phytophthora"}, {"title": "4.3 MANEJO BIOLOGICO", "text": "4.3 MANEJO BIOLOGICO\n- Trichoderma harzianum: antagonista de hongos del suelo,\n  aplicar en drench al suelo y en heridas de poda (50 g/planta)\n- Beauveria bassiana: entomopatogeno para control de insectos,\n  efectivo contra trips, cochinillas y chinches (aplicar en horas frescas)\n- Bacillus subtilis: bacteriano con actividad fungicida,\n  aplicar preventivamente en follaje cada 15 dias\n- Metarhizium anisopliae: entomopatogeno para control de\n  insectos del suelo como larvas de coleopteros\n- Conservacion de enemigos naturales: avispas parasitoides,\n  mariquitas, aranas y hongos entomopatogenos nativos\n- No mezclar agentes biologicos con fungicidas o insecticidas\n  quimicos en la misma aplicacion"}, {"title": "4.4 MANEJO QUIMICO RESPONSABLE", "text": "4.4 MANEJO QUIMICO RESPONSABLE\n- Usar productos registrados por AGROCALIDAD Ecuador\n- Respetar periodos de carencia antes de cosecha\n- Rotar principios activos para evitar resistencia\n- Usar equipos de proteccion personal (EPP) siempre:\n  guantes, mascarilla, gafas, overol y botas\n- Calibrar correctamente los equipos de aplicacion\n- Registrar todas las aplicaciones realizadas\n- No aplicar en horas de calor intenso (10am-2pm)\n- Aplicar en la tarde cuando hay polinizadores activos en el cultivo"}, {"title": "4.5 CALENDARIO DE ACTIVIDADES FITOSANITARIAS", "text": "4.5 CALENDARIO DE ACTIVIDADES FITOSANITARIAS\n- Enero-Mayo (epoca lluviosa): mayor riesgo de Moniliasis y\n  Escoba de bruja. Aplicaciones preventivas cada 15 dias,\n  cosecha oportuna semanal, monitoreo intensivo\n- Junio-Agosto (transicion): reducir frecuencia de aplicaciones,\n  realizar poda de mantenimiento y saneamiento\n- Septiembre-Diciembre (epoca seca): mayor riesgo de trips\n  y acaros. Mantener riego, monitoreo de insectos"}, {"title": "4.6 MONITOREO Y REGISTRO", "text": "4.6 MONITOREO Y REGISTRO\n- Frecuencia minima de monitoreo: semanal en epoca lluviosa,\n  quincenal en epoca seca\n- Que monitorear: porcentaje de frutos enfermos, presencia\n  de insectos, estado nutricional del follaje\n- Umbral de accion para Moniliasis: mas del 5% de mazorcas con sintomas\n- Umbral de accion para insectos: segun la plaga especifica\n- Registrar en cuaderno de campo: fecha, problema encontrado,\n  accion tomada y resultado observado"}, {"title": "4.7 RUTA DE DECISION RAPIDA PARA EL AGRICULTOR", "text": "4.7 RUTA DE DECISION RAPIDA PARA EL AGRICULTOR\n- Paso 1: identificar la parte de la planta afectada (mazorca,\n  hoja, rama, tronco o raiz)\n- Paso 2: comparar el sintoma observado con la lista de\n  enfermedades o plagas que afectan esa parte especifica\n- Paso 3: revisar las condiciones climaticas recientes (lluvia,\n  sombra, humedad) para confirmar si coinciden con las\n  condiciones favorables de ese problema\n- Paso 4: aplicar primero las medidas culturales inmediatas\n  (retirar y destruir el material afectado) antes de decidir\n  si se requiere control quimico o biologico\n- Paso 5: registrar la accion tomada para dar seguimiento en la\n  siguiente visita al lote\n\n═══════════════════════════════════════════════════════════\n5. SIEMBRA Y ESTABLECIMIENTO DEL CULTIVO\n═══════════════════════════════════════════════════════════"}, {"title": "5.1 SELECCION DEL TERRENO", "text": "5.1 SELECCION DEL TERRENO\n- pH optimo del suelo: 6.0 a 7.0\n- Textura: franco a franco arcilloso, bien drenado\n- Profundidad efectiva minima: 1.0 metro sin capas impermeables\n- Pendiente maxima: 30% (con terrazas en pendientes mayores)\n- No sembrar en zonas inundables o con nivel freatico superficial\n- Temperatura optima: 22-28°C, sin heladas\n- Precipitacion minima: 1500 mm bien distribuidos al ano"}, {"title": "5.2 PREPARACION DEL SUELO", "text": "5.2 PREPARACION DEL SUELO\n- Analizar el suelo antes de sembrar (laboratorio o kit rapido)\n- Si pH < 5.5: encalar con 1-2 t/ha de cal agricola, 30 dias antes\n- Si pH > 7.5: aplicar azufre agricola para acidificar\n- Hoyos de siembra: 40 x 40 x 40 cm minimo\n- Mezclar la tierra extraida con materia organica (compost) y\n  fertilizante de fondo (fosfato diamonico)"}, {"title": "5.3 SISTEMA DE SOMBRA", "text": "5.3 SISTEMA DE SOMBRA\n- El cacao es una planta umbrofila, necesita sombra en sus primeros anos\n- Sombra temporal (primeros 2 anos): platano o banano, sembrar\n  con 3 meses de anticipacion a una distancia de 3x3 metros\n- Sombra permanente: arboles maderables como laurel, cedro,\n  pachaco o frutales como aguacate y citricos\n- Distancia sombra permanente: 12x12 m o 18x18 m\n- En adulto: regular la sombra al 30% para balance entre\n  produccion y control de enfermedades"}, {"title": "5.4 DISTANCIAS DE SIEMBRA", "text": "5.4 DISTANCIAS DE SIEMBRA\n- Sistema cuadrado tradicional: 3x3 m (1,111 plantas/ha)\n- Sistema rectangular: 3x4 m (833 plantas/ha)\n- Sistema de alta densidad: 2x2 m (2,500 plantas/ha, con raleo posterior)\n- CCN-51 recomendado: 3x3 m en El Carmen por su vigor\n- Con sombra permanente integrada: ajustar segun sistema"}, {"title": "5.5 PROPAGACION Y MATERIAL GENETICO", "text": "5.5 PROPAGACION Y MATERIAL GENETICO\n- Semilla sexual: variabilidad genetica, plantas mas vigorosas,\n  pero produccion mas tardia (3-4 anos) e irregular\n- Injerto: uniformidad en produccion, plantas de caracteristicas\n  conocidas, produccion a los 2-3 anos\n- Tipos de injerto para cacao: injerto de parche, injerto de\n  yema y enchapado lateral\n- Patron de injerto: usar semillas de variedades tolerantes\n  a enfermedades de suelo como Rosellinia\n- Clones y genotipos de referencia usados en programas de\n  mejoramiento de cacao en America Latina: CCN-51, EET-103,\n  EET-95, ICS-1, ICS-6, ICS-39, ICS-95, IMC-67, SCA-6, SCA-12,\n  TSH-565 y UF-613. En Ecuador, las series EET fueron desarrolladas\n  por el INIAP en la Estacion Experimental Tropical Pichilingue\n- Clones recomendados para El Carmen: CCN-51, EET-103, ICS-95\n- Criterio de seleccion de material genetico: priorizar tolerancia\n  a Moniliasis y Escoba de bruja, ademas del potencial productivo"}, {"title": "5.6 VIVERO", "text": "5.6 VIVERO\n- Sustrato: 60% suelo, 30% materia organica, 10% arena\n- Desinfectar sustrato con vapor de agua o solarizacion\n  para eliminar patogenos del suelo\n- Fundas: 20x30 cm con perforaciones para drenaje\n- Riego: diario en las mananas, evitar encharcamiento\n- Fertilizacion en vivero: foliar con solucion completa\n  (NPK 20-20-20) cada 15 dias al 2 por mil\n- Tiempo en vivero: 3-4 meses hasta que tengan 3-4 hojas\n  verdaderas y 25-30 cm de altura\n- Control de enfermedades en vivero: Phytophthora y\n  damping-off son los principales problemas\n- Proteger de la lluvia directa con techo de sombra al 50%"}, {"title": "5.7 TRASPLANTE", "text": "5.7 TRASPLANTE\n- Epoca ideal: inicio de la epoca lluviosa para reducir estres hidrico\n- Seleccionar plantas vigorosas, sin sintomas de enfermedad\n- Regar abundantemente el dia anterior al trasplante\n- Plantar al mismo nivel que estaba en la funda\n- Aplicar micorrizas al momento del trasplante para mejorar\n  la absorcion de nutrientes\n- Riego post-trasplante: diario durante las primeras 2 semanas\n\n═══════════════════════════════════════════════════════════\n6. MANEJO AGRONOMICO DEL CULTIVO EN PRODUCCION\n═══════════════════════════════════════════════════════════"}, {"title": "6.1 FERTILIZACION EN PLANTACION ADULTA", "text": "6.1 FERTILIZACION EN PLANTACION ADULTA\n- Analisis de suelo: realizarlo cada 2 anos para ajustar el programa\n- Fertilizacion minima recomendada por planta adulta por ano:\n  - Nitrogeno: 150-200 g de urea (dividido en 3 aplicaciones)\n  - Fosforo: 100 g de superfosfato triple (1 aplicacion al ano)\n  - Potasio: 200 g de KCl (dividido en 2 aplicaciones)\n  - Magnesio: 100 g de sulfato de magnesio (2 aplicaciones)\n- Epoca de aplicacion: al inicio de la epoca lluviosa y a la mitad\n- Forma de aplicacion: en corona a 50 cm del tronco,\n  incorporar al suelo con azada o rastrillo\n- Fertilizacion foliar complementaria: micronutrientes (zinc,\n  boro, manganeso) cada 30 dias durante el desarrollo de frutos"}, {"title": "6.2 PODA DEL CACAO", "text": "6.2 PODA DEL CACAO\n- Poda de formacion (plantas jovenes 1-2 anos):\n  Seleccionar 3-4 ramas principales a 1.0-1.5 m de altura,\n  eliminar todos los chupones y ramas debiles\n- Poda de mantenimiento (plantas adultas):\n  Eliminar ramas cruzadas, secas o que crecen hacia abajo,\n  realizar cada 6 meses o cuando sea necesario\n- Poda fitosanitaria:\n  Eliminar todas las ramas y mazorcas enfermas,\n  desinfectar herramienta entre planta y planta\n- Poda de rehabilitacion (plantas viejas o muy enfermas):\n  Corte drastico a 1 m del suelo, seleccionar\n  3-4 brotes nuevos para reformar la copa\n- Herramientas: tijera de poda, serrucho, machete bien afilado\n- Cicatrizar cortes mayores a 3 cm con pasta bordelesa o\n  pintura mas fungicida para prevenir infecciones"}, {"title": "6.3 COSECHA", "text": "6.3 COSECHA\n- Indice de madurez: cambio de color de la mazorca segun variedad\n  - CCN-51: verde a amarillo-anaranjado intenso\n  - Nacional: verde a amarillo palido\n  - No cosechar mazorcas verdes, el grano no esta formado\n- Herramienta: tijera de cosechar o machete, nunca jalar la mazorca\n  para no danar el cojin floral donde saldran nuevas flores\n- Frecuencia: cada 15 dias en epoca normal, semanal en pico\n  de produccion y en epoca de alta presion de Moniliasis\n- No acumular mazorcas cosechadas en el suelo mas de 3 dias"}, {"title": "6.4 FERMENTACION Y SECADO", "text": "6.4 FERMENTACION Y SECADO\n- Fermentacion: proceso fundamental para desarrollar el sabor del cacao\n- Mazorcas: partir en las primeras 24 horas despues de la cosecha\n- Tipo de fermentador: cajones de madera de cedro,\n  con orificios en el fondo para drenaje de mostos\n- Tiempo de fermentacion: 5-7 dias para CCN-51,\n  3-5 dias para Nacional (menor contenido de grasa)\n- Volteo: cada 48 horas para uniformizar la fermentacion y\n  airear la masa\n- Temperatura de fermentacion: debe alcanzar 45-50°C\n  en el interior de la masa\n- Punto de fermentacion correcto: grano de color cafe,\n  sin olor a vinagre fuerte, prueba de corte muestra\n  interior marron con grietas\n- Secado: extender en marquesinas o secadoras hasta\n  lograr 7% de humedad (aproximadamente 7-10 dias al sol)\n- Nunca secar al suelo de tierra: contaminacion con hongos"}, {"title": "6.5 RIEGO", "text": "6.5 RIEGO\n- El cacao necesita agua disponible todo el ano\n- En El Carmen la precipitacion generalmente es suficiente,\n  pero en epoca seca (julio-octubre) puede ser necesario regar\n- Sistema recomendado: riego por goteo o microaspersion\n  para no mojar el follaje y reducir riesgo de enfermedades\n- Frecuencia en epoca seca: cada 8-10 dias, aplicar\n  50-80 litros por planta adulta\n- Senales de estres hidrico: hojas enrolladas y caida\n  prematura de flores y frutos pequenos\n\n═══════════════════════════════════════════════════════════\n7. POSCOSECHA Y CALIDAD DEL GRANO\n═══════════════════════════════════════════════════════════"}, {"title": "7.1 CLASIFICACION DEL CACAO SEGUN NORMA TECNICA ECUATORIANA (NTE INEN 176)", "text": "7.1 CLASIFICACION DEL CACAO SEGUN NORMA TECNICA ECUATORIANA (NTE INEN 176)\n- Cacao Arriba Superior Summer (ASS): grano fermentado bien, maximo 1% de granos defectuosos\n- Cacao Arriba Superior Selecto (ASSS): maximo 3% de granos defectuosos, calidad alta\n- Cacao Arriba Primera Selecta (APS): maximo 6% de granos defectuosos\n- Cacao Arriba Segunda Selecta (ASE): hasta 12% de defectos, calidad media\n- Cacao Arriba Tercera (AT): mas del 12% de defectos, calidad baja, menor precio\n- Estas categorias determinan el precio de venta y posibilidad de exportacion directa"}, {"title": "7.2 DEFECTOS PRINCIPALES DEL GRANO", "text": "7.2 DEFECTOS PRINCIPALES DEL GRANO\n- Grano pizarroso: fermentacion insuficiente, interior de color gris violaceo en vez de cafe,\n  ocurre cuando se seca el grano antes de fermentar correctamente\n- Grano mohoso: hongos visibles en la superficie o interior del grano, causado por\n  secado lento o almacenamiento con humedad superior al 8%\n- Grano partido o roto: dano mecanico durante el descascarillado o transporte,\n  facilita la entrada de plagas de almacen\n- Grano germinado: la semilla inicio a germinar dentro de la mazorca por exceso de\n  tiempo entre cosecha y beneficio, reduce calidad de manteca\n- Grano plano o vacio: mala polinizacion o estres hidrico durante el desarrollo del fruto\n- Grano con olor a humo: contacto directo con fuego durante secado artificial mal manejado\n- Materia extrana: presencia de piedras, tierra, restos de cascara o insectos en el lote"}, {"title": "7.3 ALMACENAMIENTO DEL CACAO SECO", "text": "7.3 ALMACENAMIENTO DEL CACAO SECO\n- Humedad ideal para almacenar: 7% (medir con medidor de humedad de granos)\n- Bodega: ventilada, fresca, sin contacto directo con el suelo (usar tarimas de madera)\n- Empaque: sacos de yute o polipropileno, nunca plastico cerrado (genera condensacion)\n- Evitar mezclar lotes de diferente calidad o fecha de cosecha\n- Control de plagas de almacen: gorgojo del cacao (Araecerus fasciculatus), revisar\n  periodicamente y usar trampas de feromona si hay infestacion\n- Tiempo maximo de almacenamiento antes de venta: 2-3 meses para mantener calidad optima\n- Rotacion de sacos: voltear cada 30 dias para evitar compactacion y focos de humedad"}, {"title": "7.4 CONTROL DE CALIDAD EN FINCA", "text": "7.4 CONTROL DE CALIDAD EN FINCA\n- Prueba de corte: cortar 100 granos al azar de un lote, contar defectuosos para\n  clasificar segun norma INEN\n- Prueba de humedad: con medidor digital o metodo de horno (105°C por 4 horas,\n  calcular perdida de peso)\n- Registro de trazabilidad: anotar fecha de cosecha, fermentacion y secado de cada lote\n  para identificar el origen de problemas de calidad\n\n═══════════════════════════════════════════════════════════\n8. EQUIPOS, HERRAMIENTAS Y SEGURIDAD EN APLICACIONES FITOSANITARIAS\n═══════════════════════════════════════════════════════════"}, {"title": "8.1 EQUIPOS DE APLICACION", "text": "8.1 EQUIPOS DE APLICACION\n- Bomba de espalda manual: la mas usada en fincas pequenas de El Carmen,\n  capacidad tipica 16-20 litros, requiere presion constante con la palanca\n- Bomba de espalda motorizada o de mochila a motor: mayor rendimiento por\n  jornada, util en plantaciones medianas, requiere mantenimiento de motor\n- Nebulizadora o atomizadora: util para tratamientos de copa alta, produce\n  gota muy fina que mejora cobertura pero aumenta riesgo de deriva\n- Inyeccion al tronco: para insecticidas sistemicos en barrenadores,\n  requiere taladro y capsulas o jeringas especificas para este uso"}, {"title": "8.2 CALIBRACION DEL EQUIPO", "text": "8.2 CALIBRACION DEL EQUIPO\n- Calibrar antes de cada temporada de aplicacion intensiva\n- Revisar boquillas desgastadas, ya que alteran el volumen aplicado\n  por hectarea y reducen la eficacia del producto\n- Verificar la presion de trabajo segun la ficha tecnica de cada boquilla\n- Realizar una prueba de descarga en agua limpia antes de aplicar\n  el producto real, midiendo el tiempo para vaciar un volumen conocido"}, {"title": "8.3 EQUIPO DE PROTECCION PERSONAL (EPP)", "text": "8.3 EQUIPO DE PROTECCION PERSONAL (EPP)\n- Elementos minimos: guantes resistentes a quimicos, mascarilla con\n  filtro adecuado al producto, gafas o careta, overol impermeable,\n  botas de caucho\n- El EPP debe lavarse aparte de la ropa normal despues de cada uso\n- Nunca aplicar productos fitosanitarios sin EPP completo, incluso\n  en aplicaciones que parezcan de bajo riesgo"}, {"title": "8.4 MANEJO Y ALMACENAMIENTO DE AGROQUIMICOS", "text": "8.4 MANEJO Y ALMACENAMIENTO DE AGROQUIMICOS\n- Bodega de agroquimicos separada de la vivienda y de alimentos,\n  bajo llave y fuera del alcance de ninos\n- Mantener los productos en su envase original con etiqueta legible\n- Realizar el triple lavado de envases vacios antes de desecharlos,\n  nunca reutilizar envases de agroquimicos para otros fines\n- Respetar el intervalo de reingreso (REI) indicado en la etiqueta\n  antes de permitir el ingreso de personas al lote tratado\n- Respetar el periodo de carencia (intervalo entre la ultima\n  aplicacion y la cosecha) indicado para cada producto"}, {"title": "8.5 BUENAS PRACTICAS EN LA APLICACION", "text": "8.5 BUENAS PRACTICAS EN LA APLICACION\n- Aplicar en horas frescas de la manana o al final de la tarde,\n  evitando las horas de mayor actividad de polinizadores\n- No aplicar con viento fuerte para reducir la deriva hacia\n  cultivos vecinos, fuentes de agua o viviendas\n- No aplicar antes de una lluvia inminente, ya que el producto\n  se lava y pierde eficacia\n- Llevar siempre un registro escrito de cada aplicacion: fecha,\n  producto, dosis, lote tratado y nombre de quien aplico\n\n═══════════════════════════════════════════════════════════\n9. DIAGNOSTICO DIFERENCIAL RAPIDO\n═══════════════════════════════════════════════════════════"}, {"title": "9.1 PROBLEMAS QUE AFECTAN PRINCIPALMENTE LA MAZORCA", "text": "9.1 PROBLEMAS QUE AFECTAN PRINCIPALMENTE LA MAZORCA\n- Mancha aceitosa con masa polvorienta blanca o crema: Moniliasis\n- Mancha negra brillante sin polvo, avanza muy rapido (7-10 dias): Pudricion negra (Phytophthora)\n- Mazorca deformada tipo \"zanahoria\", endurecida: Escoba de bruja\n- Lesiones hundidas cafe oscuro a negro, sin masa de esporas: Antracnosis\n- Puntos necroticos negros con deformacion, sin masa de esporas visible: dano de Monalonion\n- Cicatrices corchosas superficiales: dano de Trips\n- Manchas circulares claras y hundidas, con micelio tipo telarana en la corteza vecina: Mal rosado\n- Perforacion limpia con tejido consumido en el ultimo tramo antes de madurar: dano de fauna (loros, ardillas)"}, {"title": "9.2 PROBLEMAS QUE AFECTAN PRINCIPALMENTE HOJAS", "text": "9.2 PROBLEMAS QUE AFECTAN PRINCIPALMENTE HOJAS\n- Amarillamiento general desde hojas viejas: deficiencia de Nitrogeno\n- Clorosis intervenal en hojas maduras (venas verdes): deficiencia de Magnesio\n- Clorosis intervenal en hojas jovenes: deficiencia de Hierro o Manganeso\n- Necrosis marginal (bordes quemados): deficiencia de Potasio\n- Manchas necroticas cafe oscuro con bordes irregulares: Antracnosis\n- Raspado plateado o bronceado superficial: dano de Trips o Acaros\n- Manchas verde grisaceo a naranja, superficie aterciopelada: Mancha de alga\n- Filamentos blancos tipo telarana uniendo hojas secas: Telarana (Marasmius)"}, {"title": "9.3 PROBLEMAS QUE AFECTAN TRONCO O RAMAS", "text": "9.3 PROBLEMAS QUE AFECTAN TRONCO O RAMAS\n- Cancro con exudado gomoso: Pudricion negra (Phytophthora) en tronco\n- Marchitez subita con vasos internos cafe-violaceos al corte: Mal de machete\n- Orificios circulares de 2-4 mm con aserrin en la base: Barrenador del tronco\n- Costra rosada con muerte regresiva de la rama: Mal rosado\n- Galerias de tierra adheridas a la corteza: Termitas\n- Brotes en forma de escoba en ramas jovenes: Escoba de bruja"}, {"title": "9.4 PROBLEMAS QUE AFECTAN RAIZ O TODA LA PLANTA", "text": "9.4 PROBLEMAS QUE AFECTAN RAIZ O TODA LA PLANTA\n- Marchitez progresiva con hojas amarillas que no caen, micelio\n  blanco a negro en raiz: Rosellinia (pudricion radical)\n- Marchitez general con suelo encharcado: Pudricion negra en raices\n- Raices cortas y engrosadas, crecimiento lento: toxicidad por Aluminio\n\n═══════════════════════════════════════════════════════════\n10. CAMBIO CLIMATICO Y ADAPTACION DEL CULTIVO\n═══════════════════════════════════════════════════════════"}, {"title": "10.1 EFECTOS OBSERVADOS EN ZONAS CACAOTERAS DE MANABI", "text": "10.1 EFECTOS OBSERVADOS EN ZONAS CACAOTERAS DE MANABI\n- Aumento de temperatura promedio: incrementa el estres hidrico en epoca seca\n- Mayor variabilidad en patrones de lluvia: lluvias mas intensas en menor tiempo,\n  aumentando riesgo de erosion y encharcamiento\n- Eventos El Nino: incrementan drasticamente la humedad y favorecen explosiones\n  de Moniliasis y Phytophthora por varios anos seguidos\n- Eventos La Nina: sequias mas prolongadas, mayor estres hidrico y presion de\n  trips y acaros"}, {"title": "10.2 ESTRATEGIAS DE ADAPTACION", "text": "10.2 ESTRATEGIAS DE ADAPTACION\n- Diversificacion de sombra: usar especies de sombra que toleren tanto exceso\n  como deficit de agua (guaba, laurel)\n- Cosecha de agua: construir reservorios o pozos para riego de emergencia en\n  epoca de sequia prolongada\n- Seleccion de material genetico: priorizar clones con mayor tolerancia a\n  estres hidrico y a Moniliasis (CCN-51 muestra buena adaptabilidad)\n- Manejo de coberturas: mantener cobertura vegetal viva o muerta en el suelo\n  para conservar humedad y reducir temperatura del suelo\n- Sistemas agroforestales diversos: reducen la vulnerabilidad climatica al\n  combinar varias especies con diferentes necesidades hidricas"}, {"title": "10.3 MONITOREO CLIMATICO BASICO PARA EL PRODUCTOR", "text": "10.3 MONITOREO CLIMATICO BASICO PARA EL PRODUCTOR\n- Llevar registro de lluvia diaria con pluviometro simple (puede ser un\n  recipiente graduado)\n- Relacionar picos de lluvia con apariciones de Moniliasis y Phytophthora\n  para anticipar aplicaciones preventivas\n- Observar pronosticos de fenomeno El Nino/La Nina del INAMHI Ecuador para\n  planificar el manejo fitosanitario de la temporada\n\n═══════════════════════════════════════════════════════════\n11. ASOCIACION DE CULTIVOS Y SISTEMAS AGROFORESTALES\n═══════════════════════════════════════════════════════════"}, {"title": "11.1 BENEFICIOS DE LA ASOCIACION DE CULTIVOS", "text": "11.1 BENEFICIOS DE LA ASOCIACION DE CULTIVOS\n- Diversifica ingresos del productor en distintas epocas del ano\n- Mejora la estructura del suelo y aporta materia organica\n- Reduce la incidencia de algunas plagas por mayor biodiversidad\n- Provee sombra regulada sin depender de una sola especie"}, {"title": "11.2 CULTIVOS ASOCIADOS RECOMENDADOS PARA EL CARMEN", "text": "11.2 CULTIVOS ASOCIADOS RECOMENDADOS PARA EL CARMEN\n- Platano y banano: sombra temporal en los primeros 2 anos, ingreso economico\n  temprano, requiere manejo de hojas secas para no favorecer humedad excesiva\n- Guaba (Inga spp.): fija nitrogeno en el suelo mediante sus raices, sombra\n  permanente de buena calidad, produce fruta comestible\n- Laurel (Cordia alliodora): madera de alto valor comercial a largo plazo,\n  sombra rala que permite buena ventilacion\n- Citricos (limon, naranja): ingreso adicional, pero requieren manejo\n  fitosanitario propio, no sembrar muy cerca del cacao joven\n- Maderables certificados: balsa, teca en los bordes de la parcela como\n  barrera y fuente de ingreso a largo plazo"}, {"title": "11.3 DISENO DE UN SISTEMA AGROFORESTAL BASICO", "text": "11.3 DISENO DE UN SISTEMA AGROFORESTAL BASICO\n- Estrato bajo: cacao (2-4 m de altura)\n- Estrato medio: guaba o citricos (6-10 m)\n- Estrato alto: laurel o maderables (15-20 m)\n- Esta estructura en capas imita un bosque natural y reduce la necesidad\n  de insumos externos al mejorar el microclima\n\n═══════════════════════════════════════════════════════════\n12. COSTOS DE PRODUCCION Y RENTABILIDAD\n═══════════════════════════════════════════════════════════"}, {"title": "12.1 COSTOS REFERENCIALES DE ESTABLECIMIENTO (POR HECTAREA, ANO 1)", "text": "12.1 COSTOS REFERENCIALES DE ESTABLECIMIENTO (POR HECTAREA, ANO 1)\n- Preparacion de terreno y hoyado: 150-200 dolares\n- Plantas (1111 unidades a 0.50-0.80 USD c/u): 550-890 dolares\n- Mano de obra de siembra: 100-150 dolares\n- Fertilizante de fondo: 80-120 dolares\n- Sombra temporal (platano): 100-150 dolares\n- Total aproximado ano 1: 1000-1500 dolares por hectarea"}, {"title": "12.2 COSTOS DE MANTENIMIENTO ANUAL (PLANTACION ADULTA)", "text": "12.2 COSTOS DE MANTENIMIENTO ANUAL (PLANTACION ADULTA)\n- Fertilizacion: 150-250 dolares/ha/ano\n- Control fitosanitario (fungicidas, insecticidas): 150-300 dolares/ha/ano\n- Mano de obra para podas: 100-150 dolares/ha/ano\n- Mano de obra para cosecha: 200-400 dolares/ha/ano segun produccion\n- Total aproximado: 600-1100 dolares/ha/ano en manejo convencional\n- Con MIPE bien implementado, los costos fitosanitarios pueden reducirse\n  de un 30 a un 50 por ciento frente al manejo quimico exclusivo"}, {"title": "12.3 RENTABILIDAD ESTIMADA", "text": "12.3 RENTABILIDAD ESTIMADA\n- Produccion esperada CCN-51 en plena produccion: 20-30 quintales/ha/ano\n- Produccion esperada Nacional fino de aroma: 10-15 quintales/ha/ano\n- Precio referencial cacao convencional: variable segun mercado internacional\n- Precio referencial cacao certificado (organico/Fairtrade): prima de 15 a 30\n  por ciento sobre el precio convencional\n- La rentabilidad mejora significativamente cuando se reduce la perdida por\n  Moniliasis mediante manejo oportuno, ya que cada punto porcentual de\n  incidencia representa perdida directa de ingreso\n\n═══════════════════════════════════════════════════════════\n13. BUENAS PRACTICAS AGRICOLAS (BPA) Y CERTIFICACIONES\n═══════════════════════════════════════════════════════════"}, {"title": "13.1 QUE SON LAS BPA", "text": "13.1 QUE SON LAS BPA\n- Conjunto de practicas que garantizan la inocuidad del cacao,\n  el cuidado del ambiente y el bienestar de los trabajadores\n- Son requisito para acceder a mercados premium y certificaciones"}, {"title": "13.2 PRINCIPALES CERTIFICACIONES PARA CACAO ECUATORIANO", "text": "13.2 PRINCIPALES CERTIFICACIONES PARA CACAO ECUATORIANO\n- Organico (USDA Organic / EU Organic):\n  Prohibe uso de plaguicidas y fertilizantes sinteticos,\n  requiere periodo de conversion de 3 anos, precio premium\n- Rainforest Alliance:\n  Criterios ambientales, sociales y economicos,\n  permite uso de agroquimicos bajo criterios de uso seguro\n- Fairtrade (Comercio Justo):\n  Garantiza precio minimo al productor,\n  enfocado en equidad social y condiciones laborales\n- UTZ: similar a Rainforest, enfocado en sostenibilidad\n- Para exportar cacao en Ecuador: registro en AGROCALIDAD\n  como exportador es obligatorio"}, {"title": "13.3 TRAZABILIDAD", "text": "13.3 TRAZABILIDAD\n- Registro de cada lote: fecha de cosecha, area, variedad,\n  insumos aplicados, rendimiento\n- Importante para certificaciones y en caso de problemas\n  de inocuidad en destino de exportacion\n- ULEAM promueve el uso de fichas de registro en sus\n  proyectos de extension con productores de El Carmen\n\n═══════════════════════════════════════════════════════════\n14. CONTEXTO DE LA GRANJA ULEAM EL CARMEN\n═══════════════════════════════════════════════════════════"}, {"title": "14.1 UBICACION Y CLIMA", "text": "14.1 UBICACION Y CLIMA\n- Institucion: Universidad Laica Eloy Alfaro de Manabi (ULEAM)\n- Granja Experimental: El Carmen, provincia de Manabi, Ecuador\n- Altitud: 150-300 msnm\n- Temperatura promedio: 24-28°C\n- Precipitacion anual: 2500-3500 mm\n- Humedad relativa: 80-90%\n- Clima: tropical humedo, favorece enfermedades fungicas\n- Suelos: predominantemente franco arcillosos con tendencia\n  a la acidez (pH 5.5-6.5 en la mayoria de lotes)"}, {"title": "14.2 ENFERMEDADES DE MAYOR INCIDENCIA EN LA ZONA", "text": "14.2 ENFERMEDADES DE MAYOR INCIDENCIA EN LA ZONA\n- Moniliasis: principal problema fitosanitario, presente\n  todo el ano con mayor severidad en epoca lluviosa (enero-mayo)\n- Escoba de bruja: segunda enfermedad en importancia,\n  afecta principalmente en zonas con exceso de sombra\n- Pudricion negra: presente en sectores con mal drenaje\n- Antracnosis: problema secundario en plantas con estres"}, {"title": "14.3 VARIEDADES CULTIVADAS", "text": "14.3 VARIEDADES CULTIVADAS\n- CCN-51: variedad mas cultivada, alta produccion pero\n  susceptible a Moniliasis, requiere mayor manejo fitosanitario\n- Nacional fino de aroma: mayor calidad y precio, pero\n  mas susceptible a enfermedades, produccion mas baja\n- Hibridos locales: tolerancia variable a enfermedades,\n  produccion intermedia"}, {"title": "14.4 RECOMENDACIONES ESPECIFICAS PARA EL CARMEN", "text": "14.4 RECOMENDACIONES ESPECIFICAS PARA EL CARMEN\n- Priorizar cosecha oportuna dada la alta humedad de la zona\n- Implementar podas de saneamiento cada 3 meses minimo\n- Usar fungicidas cupricos preventivos en toda epoca lluviosa\n- Mantener registros de incidencia de enfermedades por lote\n- Capacitar a los agricultores en identificacion temprana\n  de sintomas\n- En El Carmen, la Moniliasis puede causar perdidas de hasta\n  70% si no se maneja correctamente\n- La combinacion de alta humedad y temperatura de la zona\n  hace que el periodo de incubacion de los hongos sea\n  mas corto que en zonas mas frescas"}, {"title": "14.5 PROBLEMATICA SOCIOECONOMICA LOCAL", "text": "14.5 PROBLEMATICA SOCIOECONOMICA LOCAL\n- Los pequenos productores de El Carmen tienen en promedio\n  1-5 hectareas de cacao\n- Acceso limitado a credito para comprar insumos fitosanitarios\n- Baja adopcion de buenas practicas agricolas por falta\n  de capacitacion y asistencia tecnica\n- La ULEAM mediante su Granja Experimental ofrece\n  demostraciones de campo y capacitaciones\n\n═══════════════════════════════════════════════════════════\n15. PREGUNTAS FRECUENTES DE AGRICULTORES (BANCO DE EJEMPLOS)\n═══════════════════════════════════════════════════════════\n\nEsta seccion sirve como referencia de estilo de respuesta para CacaoBot.\nCada par pregunta-respuesta debe usarse como modelo del tono esperado:\ndirecto, tecnico, sin preguntas de vuelta y con al menos una\nrecomendacion concreta de manejo.\n\nP: Mi cacao tiene los frutos negros y se estan pudriendo, ¿que hago?\nR: Eso es Pudricion negra causada por Phytophthora. Retira inmediatamente\nlos frutos afectados y entierralos lejos del cultivo. Mejora el drenaje de\ntu parcela porque esta enfermedad se favorece con suelos encharcados.\nAplica un fungicida a base de metalaxil mas mancozeb de forma preventiva\nen la proxima lluvia fuerte.\n\nP: Las hojas de mi cacao estan amarillas pero las venas siguen verdes, ¿que es?\nR: Ese patron se llama clorosis intervenal y es tipico de deficiencia de\nmagnesio, muy comun en los suelos acidos de El Carmen. Aplica sulfato de\nmagnesio foliar cada 15 dias durante un mes y veras mejoria notable en las\nhojas nuevas.\n\nP: Tengo ramas con muchos brotes pequenos que parecen una escoba, ¿que hago?\nR: Es Escoba de bruja, una enfermedad fungica comun en zonas con mucha sombra.\nCorta esas ramas 10 a 15 centimetros por debajo de donde empieza el sintoma\ny destruyelas fuera de la parcela. Reduce tambien el exceso de sombra para\ndisminuir la humedad que favorece este hongo.\n\nP: ¿Cada cuanto debo cosechar en epoca lluviosa?\nR: En epoca lluviosa, especialmente en una zona humeda como El Carmen,\ndebes cosechar cada 7 a 10 dias. Esto evita que las mazorcas maduras se\nconviertan en fuente de inoculo para Moniliasis, que es la enfermedad mas\nagresiva de la zona.\n\nP: ¿Que sombra es mejor para mi cacao joven?\nR: En los primeros dos anos te recomiendo platano o banano como sombra\ntemporal, sembrado con tres meses de anticipacion. Despues puedes ir\nincorporando sombra permanente como guaba o laurel, manteniendo siempre\nalrededor de un 30 por ciento de cobertura para no favorecer enfermedades\nfungicas por exceso de humedad.\n\nP: Encontre una costra de color rosado en una rama y la rama se esta secando, ¿que es?\nR: Es Mal rosado, causado por el hongo Erythricium salmonicolor. Corta la\nrama afectada por debajo de la zona con costra rosada y destruyela fuera\ndel lote. Mejora la ventilacion regulando la sombra, porque esta enfermedad\nse favorece con alta humedad y poco movimiento de aire en el dosel.\n\nP: Mis hojas tienen manchas verdosas a anaranjadas como aterciopeladas, ¿es una plaga?\nR: No es una plaga, es Mancha de alga causada por Cephaleuros virescens, un\nalga que coloniza la hoja. No suele matar la planta pero reduce su capacidad\nfotosintetica si es severa. Mejora la ventilacion con poda y evita mojar\ndemasiado el follaje con riego por aspersion.\n\nP: Encontre aserrin en la base del tronco y huequitos pequenos en la corteza, ¿que insecto es?\nR: Es el Barrenador del tronco. Lo mas importante es mantener la planta\nvigorosa con buena nutricion porque ataca preferentemente arboles\ndebilitados. Si la infestacion es fuerte, aplica un insecticida sistemico\nen inyeccion al tronco y sella las heridas con pasta bordelesa.\n\nP: Tengo plantas jovenes con hojas cortadas en forma de medialuna y veo hormigas en fila, ¿que hago?\nR: Son hormigas cortadoras de hojas. En vivero y plantas jovenes pueden\ndefoliar un arbol en una sola noche. Coloca cebos granulados en la entrada\ndel hormiguero al anochecer, que es cuando estan mas activas.\n\nP: ¿Que humedad debe tener el grano de cacao para guardarlo sin que se dane?\nR: La humedad ideal para almacenar cacao seco es 7 por ciento. Si guardas\nel grano con mas humedad, se favorece la aparicion de hongos y el grano\nmohoso, que es un defecto que reduce drasticamente el precio de venta.\n\nP: ¿Cuanto tiempo debo fermentar el cacao CCN-51?\nR: Para CCN-51 se recomienda fermentar entre 5 y 7 dias, volteando la masa\ncada 48 horas para airearla y uniformizar el proceso. El punto correcto se\nreconoce porque el grano toma color cafe por dentro y ya no huele fuerte\na vinagre.\n\nP: Quiero certificar mi finca como organica, ¿que debo saber primero?\nR: La certificacion organica exige no usar plaguicidas ni fertilizantes\nsinteticos durante un periodo de conversion de tres anos antes de poder\nvender con el sello. A cambio, el cacao organico recibe un precio premium\nen el mercado. Te recomiendo empezar fortaleciendo el manejo biologico y\ncultural desde ahora para facilitar la transicion.\n\nP: Mi cacao tiene marchitez subita y al cortar el tronco veo el interior de color violaceo, ¿que es?\nR: Eso es Mal de machete, causado por el hongo Ceratocystis cacaofunesta y\ntransmitido por un escarabajo barrenador. Si confirmas el color violaceo\ninterno, debes eliminar la planta completa y desinfectar tus herramientas\ncon hipoclorito al 10 por ciento antes de usarlas en otra planta, para no\npropagar la enfermedad.\n\nP: ¿Cada cuanto debo hacer poda fitosanitaria en mi finca?\nR: En zonas humedas como El Carmen se recomienda poda fitosanitaria cada\n3 meses como minimo, eliminando ramas y mazorcas enfermas y desinfectando\nla herramienta entre planta y planta para no propagar hongos.\n\nP: Veo telaranas blancas que unen hojas secas colgando de las ramas, ¿que es?\nR: Es Telarana o mal de hilachas, causada por hongos del genero Marasmius\nque se favorecen con humedad muy alta y poca ventilacion. Haz una poda de\naclareo para mejorar la circulacion de aire y retira el follaje afectado\ndel lote.\n\nP: Tengo hojas con bordes quemados y se enrollan, ¿que les falta?\nR: Ese sintoma de necrosis marginal es tipico de deficiencia de potasio,\ny suele venir acompanado de caida prematura de frutos. Aplica cloruro de\npotasio o sulfato de potasio segun la dosis recomendada para planta adulta,\ndividido en dos aplicaciones al ano.\n\nP: Encontre puntos blancos algodonosos en los brotes y frutos pequenos, y hormigas alrededor, ¿que es?\nR: Son cochinillas harinosas. Vienen casi siempre acompanadas de hormigas\nque las protegen porque se alimentan de su melaza, asi que controla primero\nlas hormigas. Luego aplica aceite mineral combinado con un insecticida y,\nsi puedes, libera el depredador natural Cryptolaemus montrouzieri.\n\nP: ¿Por que mis mazorcas salen vacias o con granos planos aunque la planta se ve sana?\nR: Eso generalmente se debe a mala polinizacion o a estres hidrico durante\nel desarrollo del fruto. Revisa si hay suficiente humedad disponible en\nepoca seca y considera mejorar la poblacion de polinizadores naturales del\ncacao evitando el uso indiscriminado de insecticidas durante la floracion.\n\nP: ¿Que diferencia hay entre Moniliasis y Pudricion negra si ambas dan manchas en la mazorca?\nR: La diferencia clave esta en la superficie de la mancha. En Moniliasis,\nla mancha se cubre de una masa polvorienta blanca o crema correspondiente\na las esporas del hongo. En Pudricion negra, la mancha es negra o cafe muy\noscura, brillante y sin esa capa de polvo, y avanza mucho mas rapido,\ncubriendo toda la mazorca en 7 a 10 dias.\n\nP: Quiero empezar a certificar mi finca con Rainforest Alliance, ¿que cambia frente a lo organico?\nR: A diferencia de la certificacion organica, Rainforest Alliance si permite\nel uso de agroquimicos pero bajo criterios de uso seguro y manejo\nresponsable, ademas de exigir criterios sociales y ambientales mas amplios.\nEs una opcion mas accesible si todavia dependes de control quimico para\nmanejar Moniliasis o Escoba de bruja.\n\n═══════════════════════════════════════════════════════════\n16. GLOSARIO TECNICO AMPLIADO\n═══════════════════════════════════════════════════════════\n\n- Agente causal: organismo responsable de causar la enfermedad\n- Antagonista: organismo que inhibe o destruye otro organismo patogeno\n- Basidiospora: espora sexual producida por hongos basidiomicetos\n- BPA: Buenas Practicas Agricolas\n- Cancro: lesion necrotica circunscrita en tejido lenoso\n- Clorosis: amarillamiento de tejidos por falta de clorofila\n- Cojin floral: estructura del tronco donde nacen las flores del cacao\n- Drench: aplicacion de producto diluido directamente al suelo\n- Endemica: enfermedad propia y permanente de una region\n- Endofito: microorganismo que vive dentro de los tejidos vegetales\n- Entomopatogeno: hongo o bacteria que parasita a insectos\n- Espora: unidad de reproduccion de hongos, resistente al ambiente\n- Estilete: aparato bucal en forma de aguja de insectos chupadores\n- Fermentacion: proceso bioquimico que desarrolla el sabor del cacao\n- Fitopatologia: ciencia que estudia las enfermedades de las plantas\n- Fumagina: hongo negro que crece sobre melaza de insectos\n- Fungicida cuprico: fungicida a base de cobre, amplio espectro\n- Hipoclorito: desinfectante a base de cloro para herramientas\n- Hospedero: planta o animal donde vive y se reproduce el parasito\n- Incidencia: porcentaje de plantas o frutos afectados\n- Inoculo: material infeccioso capaz de iniciar una infeccion\n- Intervalo de reingreso (REI): tiempo minimo que debe pasar tras una\n  aplicacion antes de permitir el ingreso de personas al lote tratado\n- Marchitez: perdida de turgencia y vitalidad de la planta\n- Marchitez vascular: marchitez causada por hongos en vasos conductores\n- Micelio: conjunto de filamentos que forman el cuerpo del hongo\n- Micorriza: hongo benefico que coloniza raices y mejora absorcion\n- Msnm: metros sobre el nivel del mar\n- Necrosis: muerte de tejido vegetal\n- Nematodo: gusano microscopico, algunos son plagas de raices\n- Oomiceto: organismo similar a hongo, como Phytophthora\n- Periodo de carencia: tiempo minimo entre la ultima aplicacion de un\n  producto y la cosecha\n- pH: medida de acidez o alcalinidad del suelo (escala 1-14)\n- Quelar: proceso de unir un nutriente metalico para facilitar\n  su absorcion por la planta (ej: quelato de hierro)\n- Severidad: grado de dano causado por la enfermedad\n- Solarizacion: tecnica de desinfeccion del suelo usando\n  plastico transparente y calor solar por 4-6 semanas\n- Turgencia: estado de hinchazon de las celulas vegetales\n  por presion interna del agua\n- Umbral economico: nivel de plaga a partir del cual se justifica control\n  control\n- Zoospora: espora movil con flagelos propia de Oomicetos\n\n═══════════════════════════════════════════════════════════\n17. PRODUCTOS FITOSANITARIOS DE REFERENCIA Y CATEGORIAS TOXICOLOGICAS\n═══════════════════════════════════════════════════════════"}, {"title": "17.1 FUNGICIDAS CUPRICOS (PROTECTANTES DE CONTACTO)", "text": "17.1 FUNGICIDAS CUPRICOS (PROTECTANTES DE CONTACTO)\n- Ingredientes activos comunes: hidroxido de cobre, oxicloruro de cobre,\n  sulfato de cobre (caldo bordeles)\n- Modo de accion: protectante de contacto, actua sobre la superficie de\n  la planta impidiendo la germinacion de esporas, no penetra el tejido\n- Uso principal en esta finca: Moniliasis, Antracnosis, mancha de alga\n- Categoria toxicologica habitual: generalmente banda III o IV (ligeramente\n  toxico a poco toxico), pero igual requiere EPP completo\n- Limitacion: se lava con lluvia intensa, por lo que requiere reaplicacion\n  frecuente en epoca lluviosa"}, {"title": "17.2 FUNGICIDAS SISTEMICOS", "text": "17.2 FUNGICIDAS SISTEMICOS\n- Ingredientes activos comunes: metalaxil, tiofanato metilo, azoxistrobina\n- Modo de accion: penetran el tejido vegetal y se trasladan dentro de la\n  planta, por lo que protegen tejido nuevo y pueden tener accion curativa\n  en etapas iniciales de la infeccion\n- Uso principal: Pudricion negra (metalaxil + mancozeb), Antracnosis\n- Riesgo de resistencia: mayor que en los cupricos, por lo que se debe\n  rotar el principio activo y no usarlo de forma continua en el mismo lote"}, {"title": "17.3 INSECTICIDAS DE USO FRECUENTE", "text": "17.3 INSECTICIDAS DE USO FRECUENTE\n- Neonicotinoides (imidacloprid, thiamethoxam): sistemicos, usados contra\n  Monalonion, afidos y otros chupadores; aplicar solo al inicio de la\n  infestacion para no afectar polinizadores\n- Reguladores e inhibidores biologicos (spinosad, abamectina): usados\n  contra trips y acaros, de impacto mas bajo sobre enemigos naturales\n  que los insecticidas de amplio espectro\n- Cebos para hormigas (sulfluramida, fipronil): formulados en granulos,\n  se colocan directamente en la entrada del hormiguero"}, {"title": "17.4 PRODUCTOS BIOLOGICOS", "text": "17.4 PRODUCTOS BIOLOGICOS\n- Trichoderma harzianum, Bacillus subtilis: hongos y bacterias antagonistas\n  usados contra patogenos de suelo y de follaje\n- Beauveria bassiana, Metarhizium anisopliae: hongos entomopatogenos\n  usados contra insectos plaga\n- Ventaja general: menor periodo de carencia, menor impacto en enemigos\n  naturales, compatibles con manejo organico\n- Limitacion general: efecto mas lento que los productos quimicos de\n  sintesis, requieren condiciones ambientales adecuadas (humedad,\n  temperatura) para que el organismo biologico se establezca"}, {"title": "17.5 CRITERIOS PARA ELEGIR UN PRODUCTO", "text": "17.5 CRITERIOS PARA ELEGIR UN PRODUCTO\n- Verificar que el producto este registrado en AGROCALIDAD Ecuador para\n  el cultivo de cacao y para el problema especifico a controlar\n- Revisar la categoria toxicologica en la etiqueta antes de decidir el\n  nivel de EPP necesario\n- Preferir productos de menor impacto en polinizadores durante la\n  epoca de floracion\n- Rotar familias quimicas distintas entre aplicaciones consecutivas\n  para reducir el riesgo de resistencia en plagas y patogenos\n\n═══════════════════════════════════════════════════════════\n18. PROTOCOLO DE INSPECCION DE CAMPO PASO A PASO\n═══════════════════════════════════════════════════════════"}, {"title": "18.1 ANTES DE ENTRAR AL LOTE", "text": "18.1 ANTES DE ENTRAR AL LOTE\n- Revisar el registro de la visita anterior para saber que problemas\n  se reportaron y si requieren seguimiento\n- Llevar libreta o formato de campo, lupa de mano, tijera de podar y\n  bolsas para muestras si se requiere llevar material al laboratorio"}, {"title": "18.2 RECORRIDO DEL LOTE", "text": "18.2 RECORRIDO DEL LOTE\n- Caminar en zigzag por el lote, no solo por los bordes, ya que los\n  focos de enfermedad suelen iniciar en zonas internas con mas sombra\n- Por cada 10-20 plantas inspeccionadas, registrar: numero de mazorcas\n  sanas y enfermas, presencia de plagas en hojas y brotes, estado\n  general del follaje (color, tamano, deformaciones)\n- Revisar especialmente las zonas bajas y con mal drenaje, ya que ahi\n  se concentra el riesgo de Pudricion negra y Rosellinia"}, {"title": "18.3 REGISTRO Y DECISION", "text": "18.3 REGISTRO Y DECISION\n- Calcular el porcentaje de mazorcas con sintomas sobre el total\n  observado para comparar con el umbral de accion de Moniliasis (5%)\n- Si se supera el umbral, programar la accion cultural inmediata\n  (retiro y entierro de mazorcas enfermas) antes de decidir si se\n  necesita ademas un control quimico o biologico\n- Anotar la fecha de la proxima visita de seguimiento segun la\n  frecuencia recomendada para la epoca del ano"}, {"title": "18.4 SEGUIMIENTO", "text": "18.4 SEGUIMIENTO\n- Comparar los registros de visitas consecutivas para identificar si\n  la incidencia de un problema esta subiendo, bajando o estable\n- Usar esta informacion para ajustar el calendario fitosanitario de\n  la finca en la siguiente temporada\n\n═══════════════════════════════════════════════════════════\n19. GLOSARIO BILINGUE DE TERMINOS CLAVE (ESPANOL-INGLES)\n═══════════════════════════════════════════════════════════\n\nEsta seccion es util como referencia para consultar literatura cientifica\ninternacional sobre fitosanidad del cacao.\n\n- Moniliasis = Frosty pod rot\n- Escoba de bruja = Witches' broom\n- Pudricion negra = Black pod rot\n- Mal de machete = Ceratocystis wilt\n- Antracnosis = Anthracnose\n- Pudricion radical = Root rot\n- Mal rosado = Pink disease\n- Mancha de alga = Algal leaf spot\n- Telarana / mal de hilachas = Thread blight\n- Cojin floral = Floral cushion\n- Manejo integrado de plagas y enfermedades (MIPE) = Integrated pest\n  management (IPM)\n- Umbral economico = Economic threshold\n- Periodo de carencia = Pre-harvest interval (PHI)\n- Intervalo de reingreso = Re-entry interval (REI)\n- Equipo de proteccion personal (EPP) = Personal protective equipment (PPE)\n- Clorosis intervenal = Interveinal chlorosis\n- Necrosis marginal = Marginal necrosis\n- Fermentacion = Fermentation\n- Poda fitosanitaria = Sanitation pruning\n- Sombra permanente = Permanent shade\n- Trazabilidad = Traceability\n- Buenas Practicas Agricolas (BPA) = Good Agricultural Practices (GAP)\n\n═══════════════════════════════════════════════════════════\n20. FUENTES Y REFERENCIAS TECNICAS GENERALES\n═══════════════════════════════════════════════════════════\n\nEsta base de conocimiento sintetiza informacion tecnica de caracter general\nsobre fitosanidad del cultivo de cacao, consistente con la literatura\npublicada por instituciones de referencia en la region, entre ellas:\n- INIAP (Instituto Nacional de Investigaciones Agropecuarias, Ecuador),\n  en particular los trabajos de la Estacion Experimental Tropical\n  Pichilingue sobre Moniliasis, Escoba de bruja y clones EET\n- FAO (Organizacion de las Naciones Unidas para la Alimentacion y la\n  Agricultura), en sus publicaciones sobre manejo de enfermedades en cacao\n- AGROCALIDAD (Agencia de Regulacion y Control Fito y Zoosanitario,\n  Ecuador), como referencia para registro de productos fitosanitarios\n- CABI (Centre for Agriculture and Bioscience International) y\n  centros de investigacion regionales como CENICAFE, en lo relativo a\n  enfermedades compartidas entre cultivos perennes tropicales como el\n  mal rosado y la mancha de alga\n- Normativa tecnica ecuatoriana NTE INEN 176 para clasificacion de\n  calidad del grano de cacao\nEsta seccion debe completarse con las citas bibliograficas especificas\nque el estudiante use formalmente en el documento de tesis, ya que aqui\nse listan unicamente las familias de fuentes consultadas para construir\nel contenido tecnico de este sistema.\n\n═══════════════════════════════════════════════════════════\n21. ANEXO: PLAN BASICO DE CAPACITACION PARA AGRICULTORES\n═══════════════════════════════════════════════════════════\n\nEsta seccion complementa el rol de CacaoBot como herramienta de extension\nagricola, ya que la Granja Experimental ULEAM El Carmen tiene entre sus\nobjetivos capacitar a productores locales en identificacion temprana de\nproblemas fitosanitarios."}, {"title": "21.1 MODULO 1: RECONOCIMIENTO VISUAL DE PROBLEMAS COMUNES", "text": "21.1 MODULO 1: RECONOCIMIENTO VISUAL DE PROBLEMAS COMUNES\n- Objetivo: que el agricultor distinga a simple vista Moniliasis,\n  Pudricion negra y Escoba de bruja, que son los tres problemas de\n  mayor impacto economico en la zona\n- Metodologia sugerida: recorrido guiado por el lote senalando ejemplos\n  reales de cada sintoma, apoyado con el banco de preguntas frecuentes\n  de la seccion 15 como guion de conversacion\n- Indicador de exito: el agricultor logra identificar correctamente al\n  menos 8 de 10 casos presentados durante la practica de campo"}, {"title": "21.2 MODULO 2: COSECHA OPORTUNA Y MANEJO CULTURAL BASICO", "text": "21.2 MODULO 2: COSECHA OPORTUNA Y MANEJO CULTURAL BASICO\n- Objetivo: que el agricultor incorpore la cosecha cada 7-15 dias segun\n  la epoca, y la eliminacion inmediata de mazorcas enfermas, como habito\n  rutinario de la finca\n- Metodologia sugerida: comparar en campo un lote con cosecha oportuna\n  frente a un lote descuidado para visualizar la diferencia en incidencia\n- Indicador de exito: reduccion medible de mazorcas enfermas acumuladas\n  en el lote tras 2-3 ciclos de cosecha"}, {"title": "21.3 MODULO 3: USO SEGURO DE AGROQUIMICOS", "text": "21.3 MODULO 3: USO SEGURO DE AGROQUIMICOS\n- Objetivo: que el agricultor use el equipo de proteccion personal de\n  forma correcta y respete los periodos de carencia y reingreso\n- Metodologia sugerida: demostracion practica de calibracion de bomba\n  de espalda y triple lavado de envases vacios\n- Indicador de exito: el agricultor puede explicar, en sus propias\n  palabras, por que debe respetar el periodo de carencia antes de cosechar"}, {"title": "21.4 MODULO 4: USO DE LA HERRAMIENTA DIGITAL (CACAOBOT)", "text": "21.4 MODULO 4: USO DE LA HERRAMIENTA DIGITAL (CACAOBOT)\n- Objetivo: que el agricultor o tecnico de campo sepa formular preguntas\n  claras a CacaoBot describiendo sintomas (parte de la planta, color,\n  forma de la mancha, condiciones climaticas recientes) para obtener un\n  diagnostico mas preciso\n- Metodologia sugerida: practica guiada con casos reales del banco de\n  preguntas frecuentes antes de usar la herramienta de forma autonoma\n\n═══════════════════════════════════════════════════════════\n22. ANEXO: NIVELES DE URGENCIA Y PRIORIZACION DE RESPUESTA\n═══════════════════════════════════════════════════════════\n\nEsta clasificacion ayuda a priorizar la respuesta del agricultor cuando\nse reportan varios problemas a la vez en la misma visita de campo."}, {"title": "22.1 URGENCIA ALTA (actuar en las siguientes 24-48 horas)", "text": "22.1 URGENCIA ALTA (actuar en las siguientes 24-48 horas)\n- Marchitez subita de toda la planta con sospecha de Mal de machete,\n  por riesgo de propagacion rapida mediante el vector\n- Incidencia de Moniliasis o Pudricion negra por encima del umbral\n  del 5% de mazorcas afectadas en epoca lluviosa\n- Plantas jovenes con defoliacion severa por hormigas cortadoras"}, {"title": "22.2 URGENCIA MEDIA (actuar en la siguiente semana)", "text": "22.2 URGENCIA MEDIA (actuar en la siguiente semana)\n- Focos iniciales de Escoba de bruja, Mal rosado o Telarana detectados\n  durante el monitoreo de rutina\n- Deficiencias nutricionales con sintomas claros pero sin afectacion\n  severa de la produccion todavia\n- Presencia de barrenador del tronco en pocos arboles aislados"}, {"title": "22.3 URGENCIA BAJA (programar en el calendario regular de manejo)", "text": "22.3 URGENCIA BAJA (programar en el calendario regular de manejo)\n- Manchas de alga o sintomas leves de trips y acaros sin dano economico\n  significativo\n- Necesidad de poda de mantenimiento de rutina sin sintomas de enfermedad\n- Ajustes preventivos de fertilizacion segun calendario anual"}, {"title": "22.4 CRITERIO GENERAL DE CACAOBOT AL RESPONDER", "text": "22.4 CRITERIO GENERAL DE CACAOBOT AL RESPONDER\n- Cuando el agricultor describe un sintoma que corresponde a un problema\n  de urgencia alta, CacaoBot debe indicar explicitamente que se trata de\n  una accion prioritaria e inmediata, ademas del diagnostico y manejo\n  recomendado\n- En problemas de urgencia media o baja, basta con dar el diagnostico y\n  la recomendacion de manejo dentro del flujo normal de respuesta\n\n═══════════════════════════════════════════════════════════\n23. INDICADORES CLAVE DE DESEMPENO FITOSANITARIO (KPIs) DE LA FINCA\n═══════════════════════════════════════════════════════════\n\nEstos indicadores permiten a un productor o tecnico medir objetivamente\nsi el manejo fitosanitario esta funcionando, en lugar de basarse solo\nen percepciones generales."}, {"title": "23.1 INDICADORES DE INCIDENCIA Y SEVERIDAD", "text": "23.1 INDICADORES DE INCIDENCIA Y SEVERIDAD\n- Porcentaje de incidencia: numero de mazorcas con sintomas dividido\n  entre el total de mazorcas observadas, multiplicado por 100\n- Porcentaje de severidad: proporcion del tejido afectado dentro de\n  cada mazorca o planta enferma, util para distinguir un foco inicial\n  de un foco avanzado\n- Tendencia de incidencia: comparar el porcentaje de incidencia entre\n  visitas consecutivas para saber si el problema esta aumentando o\n  disminuyendo tras una intervencion"}, {"title": "23.2 INDICADORES DE MANEJO CULTURAL", "text": "23.2 INDICADORES DE MANEJO CULTURAL\n- Frecuencia real de cosecha lograda frente a la frecuencia recomendada\n  para la epoca del ano (8-15 dias en lluvias, hasta 15 dias en seca)\n- Porcentaje de mazorcas enfermas efectivamente retiradas y destruidas\n  frente al total de mazorcas enfermas detectadas en el monitoreo\n- Cumplimiento del calendario de poda fitosanitaria (cada 3 meses)"}, {"title": "23.3 INDICADORES ECONOMICOS", "text": "23.3 INDICADORES ECONOMICOS\n- Costo de manejo fitosanitario por hectarea por ano, comparado contra\n  el costo referencial de 150-300 dolares/ha/ano de la seccion 12\n- Perdida estimada de produccion atribuible a Moniliasis u otras\n  enfermedades, expresada en quintales por hectarea por ano\n- Relacion costo-beneficio de pasar de manejo quimico exclusivo a un\n  esquema MIPE con componente biologico y cultural"}, {"title": "23.4 USO DE LOS KPIs EN LA TOMA DE DECISIONES", "text": "23.4 USO DE LOS KPIs EN LA TOMA DE DECISIONES\n- Si la incidencia de Moniliasis se mantiene por debajo del umbral del\n  5% durante varios ciclos, el esquema de manejo actual puede mantenerse\n- Si la incidencia sube de forma sostenida pese a aplicar las medidas\n  culturales, es senal de revisar la frecuencia de cosecha real, la\n  calidad de la poda de saneamiento o la necesidad de reforzar el\n  componente quimico o biologico del programa MIPE\n\n═══════════════════════════════════════════════════════════\nINSTRUCCIONES DE RESPUESTA\n═══════════════════════════════════════════════════════════\n- Responde SIEMPRE en espanol\n- Cuando el agricultor describa sintomas, DIAGNOSTICA directamente\n- Se claro, tecnico y practico; habla como agronomo de campo\n- Menciona siempre que parte de la planta afecta\n- Incluye al menos una recomendacion de manejo concreta\n- Respuestas entre 80-200 palabras, directas al punto\n- Si no sabes algo, dilo honestamente\n- No inventes enfermedades que no existen en cacao\n- Cita el contexto de El Carmen cuando sea relevante\n- NUNCA uses asteriscos (**) ni formato Markdown\n- No preguntes de vuelta al usuario; siempre da una respuesta util"}];
+
+// ─────────────────────────────────────────────
+//  MOTOR TF-IDF (JavaScript puro, sin librerías)
+// ─────────────────────────────────────────────
+const STOPWORDS = new Set([
+  'de','la','el','en','y','a','los','las','se','del','que','un','una','con',
+  'es','por','su','al','para','lo','como','mas','pero','sus','le','ya','o',
+  'este','fue','si','sobre','entre','cuando','me','son','también','hay',
+  'mi','te','nos','muy','sin','todo','esta','hasta','desde','nos','qué',
+  'cómo','cuál','cuándo','dónde','porque','también','ser','estar','tiene',
+  'han','ha','he','les','nos','lo','las','mi','tu','su','their'
+]);
+
+function tokenizar(txt) {
+  return txt.toLowerCase().replace(/[^a-záéíóúñü\s]/g,'').split(/\s+/)
+    .filter(t => t.length > 2 && !STOPWORDS.has(t));
+}
+
+// Pre-computar TF-IDF de los chunks
+const DF = {};
+const CHUNK_TOKS = CHUNKS.map(c => {
+  const toks = tokenizar(c.title + ' ' + c.text);
+  new Set(toks).forEach(t => DF[t] = (DF[t]||0)+1);
+  return toks;
+});
+const N = CHUNKS.length;
+
+function idf(t){ return Math.log((N+1)/((DF[t]||0)+1))+1; }
+
+function vectorizar(toks) {
+  const tf = {};
+  toks.forEach(t => tf[t] = (tf[t]||0)+1);
+  const vec = {};
+  let norm = 0;
+  for (const [t,c] of Object.entries(tf)) {
+    const v = c * idf(t);
+    vec[t] = v; norm += v*v;
+  }
+  norm = Math.sqrt(norm)||1;
+  for (const t in vec) vec[t] /= norm;
+  return vec;
+}
+
+const CHUNK_VECS = CHUNK_TOKS.map(vectorizar);
+
+function coseno(v1, v2) {
+  let s = 0;
+  for (const [t,v] of Object.entries(v1)) if (v2[t]) s += v*v2[t];
+  return s;
+}
+
+function buscar(query, k=5) {
+  const qv = vectorizar(tokenizar(query));
+  if (!Object.keys(qv).length) return [];
+  const scored = CHUNK_VECS.map((cv,i) => [coseno(qv,cv),i])
+    .filter(([s]) => s > 0)
+    .sort((a,b) => b[0]-a[0])
+    .slice(0,k);
+  // devolver en orden original del documento (más coherente)
+  return scored.map(([,i]) => i).sort((a,b)=>a-b).map(i => CHUNKS[i]);
+}
+
+// ─────────────────────────────────────────────
+//  FORMATO DE RESPUESTA
+// ─────────────────────────────────────────────
+function formatearRespuesta(chunks, query) {
+  if (!chunks.length) {
+    return {
+      texto: 'No encontré información específica sobre eso en mi base de conocimiento.\n\nPuedo ayudarte con enfermedades (moniliasis, escoba de bruja, pudrición negra), plagas, nutrición, podas, cosecha, poscosecha y costos de producción del cacao.',
+      fuente: null
+    };
+  }
+
+  // Si hay un chunk muy relevante, mostrar su contenido directamente
+  const principal = chunks[0];
+  let texto = principal.text;
+
+  // Limpiar el texto: quitar líneas de separadores, limitar longitud
+  texto = texto
+    .replace(/[═─]{3,}/g, '')
+    .replace(/\n{3,}/g, '\n\n')
+    .trim();
+
+  // Si hay más de un chunk relevante, agregar resumen al final
+  if (chunks.length > 1) {
+    const temas = chunks.slice(1).map(c => c.title.split(' ').slice(1).join(' '));
+    texto += '\n\n📌 Temas relacionados: ' + temas.join(' · ');
+  }
+
+  return { texto, fuente: principal.title };
+}
+
+// ─────────────────────────────────────────────
+//  ESTADO Y PERSISTENCIA
+// ─────────────────────────────────────────────
+let historial = []; // [{id, rol, texto, ts}]
+let contadorId = 0;
+
+function cargarHistorial() {
+  try {
+    const raw = localStorage.getItem('cacaobot_historial');
+    if (raw) {
+      const data = JSON.parse(raw);
+      historial = data.historial || [];
+      contadorId = data.contadorId || 0;
+    }
+  } catch(e) { historial = []; contadorId = 0; }
+}
+
+function guardarHistorial() {
+  try {
+    localStorage.setItem('cacaobot_historial', JSON.stringify({historial, contadorId}));
+  } catch(e) {}
+}
+
+// ─────────────────────────────────────────────
+//  UI — RENDERIZADO DE MENSAJES
+// ─────────────────────────────────────────────
+const chatEl = document.getElementById('chat');
+const txtEl  = document.getElementById('txt');
+const btnEl  = document.getElementById('btn-send');
+
+function hora(ts) {
+  return new Date(ts).toLocaleTimeString('es',{hour:'2-digit',minute:'2-digit'});
+}
+
+function agregarBurbuja(rol, texto, ts, fuente, id) {
+  // Quitar bienvenida si existe
+  const welcome = document.getElementById('welcome');
+  if (welcome) welcome.remove();
+
+  const wrap = document.createElement('div');
+  wrap.className = 'msg-wrap ' + (rol === 'usuario' ? 'user' : 'bot');
+  wrap.dataset.id = id;
+
+  const bub = document.createElement('div');
+  bub.className = 'bubble' + (rol === 'error' ? ' error' : '');
+  bub.textContent = texto;
+
+  if (fuente) {
+    const tag = document.createElement('span');
+    tag.className = 'fuente';
+    tag.textContent = '📖 ' + fuente;
+    bub.appendChild(tag);
+  }
+
+  const time = document.createElement('div');
+  time.className = 'msg-time';
+  time.textContent = hora(ts);
+
+  wrap.appendChild(bub);
+  wrap.appendChild(time);
+  chatEl.appendChild(wrap);
+  chatEl.scrollTop = chatEl.scrollHeight;
+  return wrap;
+}
+
+function mostrarTyping() {
+  const wrap = document.createElement('div');
+  wrap.className = 'msg-wrap bot';
+  wrap.id = 'typing-indicator';
+  wrap.innerHTML = '<div class="bubble"><div class="typing"><span></span><span></span><span></span></div></div>';
+  chatEl.appendChild(wrap);
+  chatEl.scrollTop = chatEl.scrollHeight;
+}
+
+function quitarTyping() {
+  const t = document.getElementById('typing-indicator');
+  if (t) t.remove();
+}
+
+function renderizarTodo() {
+  chatEl.innerHTML = '';
+  if (!historial.length) {
+    mostrarBienvenida();
+    return;
+  }
+  historial.forEach(m => agregarBurbuja(m.rol, m.texto, m.ts, m.fuente, m.id));
+}
+
+function mostrarBienvenida() {
+  chatEl.innerHTML = `
+    <div id="welcome">
+      <div class="ico">🌱</div>
+      <h2>Hola, soy CacaoBot</h2>
+      <p>Asistente fitosanitario de la<br>Granja Experimental ULEAM El Carmen</p>
+      <p style="margin-top:8px;font-size:13px">Preguntas frecuentes:</p>
+      <div class="chips">
+        <div class="chip" onclick="preguntaRapida(this)">Moniliasis en mazorca</div>
+        <div class="chip" onclick="preguntaRapida(this)">Escoba de bruja</div>
+        <div class="chip" onclick="preguntaRapida(this)">Hojas amarillas</div>
+        <div class="chip" onclick="preguntaRapida(this)">Costos de producción</div>
+        <div class="chip" onclick="preguntaRapida(this)">Cómo podar el cacao</div>
+        <div class="chip" onclick="preguntaRapida(this)">Plagas del cacao</div>
+      </div>
+    </div>`;
+}
+
+function preguntaRapida(el) {
+  txtEl.value = el.textContent;
+  ajustarAltura();
+  enviar();
+}
+
+// ─────────────────────────────────────────────
+//  LÓGICA DE ENVÍO Y RESPUESTA
+// ─────────────────────────────────────────────
+function enviar() {
+  const msg = txtEl.value.trim();
+  if (!msg) return;
+
+  contadorId++;
+  const ts = Date.now();
+  const entrada = {id: contadorId, rol: 'usuario', texto: msg, ts, fuente: null};
+  historial.push(entrada);
+  agregarBurbuja('usuario', msg, ts, null, contadorId);
+
+  txtEl.value = '';
+  ajustarAltura();
+  btnEl.disabled = true;
+  mostrarTyping();
+
+  // Pequeño delay para que se vea el "typing" y no parezca instantáneo
+  setTimeout(() => {
+    quitarTyping();
+
+    const resultados = buscar(msg);
+    const {texto, fuente} = formatearRespuesta(resultados, msg);
+
+    contadorId++;
+    const tsR = Date.now();
+    const salida = {id: contadorId, rol: 'bot', texto, ts: tsR, fuente};
+    historial.push(salida);
+    agregarBurbuja('bot', texto, tsR, fuente, contadorId);
+    guardarHistorial();
+    btnEl.disabled = false;
+    txtEl.focus();
+  }, 600 + Math.random()*400);
+}
+
+// ─────────────────────────────────────────────
+//  INPUT — auto-resize textarea
+// ─────────────────────────────────────────────
+function ajustarAltura() {
+  txtEl.style.height = 'auto';
+  txtEl.style.height = Math.min(txtEl.scrollHeight, 120) + 'px';
+  btnEl.disabled = !txtEl.value.trim();
+}
+
+txtEl.addEventListener('input', ajustarAltura);
+txtEl.addEventListener('keydown', e => {
+  if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); enviar(); }
+});
+
+// ─────────────────────────────────────────────
+//  EXPORTAR CSV
+// ─────────────────────────────────────────────
+function exportarCSV() {
+  if (!historial.length) { toast('No hay conversación para exportar'); return; }
+
+  const filas = [['id','rol','mensaje','timestamp']];
+  historial.forEach(m => {
+    filas.push([m.id, m.rol, '"'+m.texto.replace(/"/g,'""')+'"',
+      new Date(m.ts).toLocaleString('es')]);
+  });
+
+  const csv = filas.map(r => r.join(',')).join('\n');
+  const blob = new Blob(['\uFEFF'+csv], {type:'text/csv;charset=utf-8'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'conversacion_cacaobot_' + new Date().toISOString().slice(0,10) + '.csv';
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+  toast('CSV descargado');
+}
+
+// ─────────────────────────────────────────────
+//  LIMPIAR CONVERSACIÓN
+// ─────────────────────────────────────────────
+function pedirLimpiar() {
+  abrirModal(
+    '¿Limpiar conversación?',
+    'Se borrarán todos los mensajes de esta sesión. El CSV no se puede recuperar una vez borrado.',
+    () => {
+      historial = [];
+      contadorId = 0;
+      guardarHistorial();
+      renderizarTodo();
+      cerrarModal();
+      toast('Conversación borrada');
+    }
+  );
+}
+
+// ─────────────────────────────────────────────
+//  MODAL
+// ─────────────────────────────────────────────
+function abrirModal(titulo, msg, onOk) {
+  document.getElementById('modal-title').textContent = titulo;
+  document.getElementById('modal-msg').textContent = msg;
+  document.getElementById('modal-ok').onclick = onOk;
+  document.getElementById('modal-overlay').classList.add('open');
+}
+function cerrarModal() {
+  document.getElementById('modal-overlay').classList.remove('open');
+}
+
+// ─────────────────────────────────────────────
+//  MENÚ
+// ─────────────────────────────────────────────
+function toggleMenu() {
+  document.getElementById('menu-overlay').classList.toggle('open');
+}
+
+// ─────────────────────────────────────────────
+//  ACERCA DE
+// ─────────────────────────────────────────────
+function mostrarAcercaDe() {
+  abrirModal(
+    'CacaoBot ULEAM',
+    'Versión 1.0 — Granja Experimental El Carmen, Manabí.\n\nApp offline con base de conocimiento fitosanitario del cultivo de cacao. No requiere internet ni servidor.\n\nDesarrollado como herramienta de apoyo para técnicos de campo.',
+    cerrarModal
+  );
+  document.querySelector('#modal .btns .cancel').style.display = 'none';
+  setTimeout(()=>{ document.querySelector('#modal .btns .cancel').style.display=''; }, 100);
+}
+
+// ─────────────────────────────────────────────
+//  TOAST
+// ─────────────────────────────────────────────
+function toast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'), 2500);
+}
+
+// ─────────────────────────────────────────────
+//  SERVICE WORKER
+// ─────────────────────────────────────────────
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('./sw.js').catch(()=>{});
+}
+
+// ─────────────────────────────────────────────
+//  INICIO
+// ─────────────────────────────────────────────
+cargarHistorial();
+renderizarTodo();
+</script>
+</body>
+</html>
